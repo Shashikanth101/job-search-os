@@ -1,4 +1,7 @@
 import { FirecrawlCareerScraper } from './firecrawl-scraper.js';
+import { GreenhouseScraper } from './greenhouse.js';
+import { LeverScraper } from './lever.js';
+import { SwiggyScraper } from './swiggy.js';
 
 /**
  * Parses the optional JSON scraper configuration from the environment.
@@ -17,10 +20,22 @@ export function loadCareerPages() {
 /**
  * Builds all configured scraper instances.
  * @param {import('better-sqlite3').Database} db Database connection.
- * @returns {Array<FirecrawlCareerScraper>} Configured scrapers.
+ * @returns {Array<FirecrawlCareerScraper | GreenhouseScraper | LeverScraper | SwiggyScraper>} Configured scrapers.
  */
 export function createScrapers(db) {
-  return loadCareerPages().map((page) => new FirecrawlCareerScraper({ db, ...page }));
+  const configuredScrapers = loadCareerPages().map((page) => new FirecrawlCareerScraper({ db, ...page }));
+  const greenhouseConfigs = [
+    { company: 'Postman', slug: 'postman' },
+    { company: 'Razorpay', slug: 'razorpaysoftwareprivatelimited' },
+    { company: 'Groww', slug: 'groww' },
+  ];
+  const leverConfigs = [
+    { company: 'CRED', slug: 'cred' },
+    { company: 'Meesho', slug: 'meesho' },
+  ];
+  const greenhouseScrapers = greenhouseConfigs.map((config) => new GreenhouseScraper({ db, ...config }));
+  const leverScrapers = leverConfigs.map((config) => new LeverScraper({ db, ...config }));
+  return [...configuredScrapers, new SwiggyScraper({ db }), ...greenhouseScrapers, ...leverScrapers];
 }
 
 /**

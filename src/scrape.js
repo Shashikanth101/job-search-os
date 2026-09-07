@@ -8,12 +8,15 @@ import { runAllScrapers } from './scrapers/index.js';
  */
 async function main() {
   const database = createDatabase();
-  const results = await runAllScrapers(database);
-  console.log(JSON.stringify(results, null, 2));
-  database.close();
+  try {
+    const results = await runAllScrapers(database);
+    console.log(JSON.stringify(results, null, 2));
+  } finally {
+    process.exit(0);
+  }
 }
 
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });

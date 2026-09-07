@@ -1,3 +1,5 @@
+import { rankJob } from '../ranker/index.js';
+
 /**
  * Base contract for every job scraper.
  */
@@ -24,7 +26,7 @@ export class BaseScraper {
   /**
    * Converts raw source data into normalized job records.
    * @param {unknown} rawData Raw scraper response.
-   * @returns {Array<object>} Normalized jobs.
+   * @returns {Array<object> | Promise<Array<object>>} Normalized jobs.
    */
   parseJobs(rawData) {
     throw new Error(`${this.constructor.name}.parseJobs() must be implemented.`);
@@ -73,11 +75,25 @@ export class BaseScraper {
   }
 
   /**
-   * Executes the full scrape, parse, and persistence pipeline.
+   * Executes the full scrape, parse, rank, and persistence pipeline.
    * @returns {Promise<number>} Number of records written.
    */
   async run() {
-    const jobs = this.parseJobs(await this.scrape());
-    return this.saveToDb(jobs);
+    const raw = await this.scrape();
+    const jobs = await this.parseJobs(raw);
+
+    const ranked = await Promise.all(
+      jobs.map(async (job) => {
+        try {
+          const { score, reason } = await rankJob(job.title, job.description, job.company);
+          return { ...job, relevance_score: score, relevance_reason: reason };
+        } catch (error) {
+          console.error(`Ranking failed for "${job.title}" at ${job.company}:`, error.message);
+          return { ...job, relevance_score: 0, relevance_reason: 'Ranking failed' };
+        }
+      })
+    );
+
+    return this.saveToDb(ranked);
   }
 }

@@ -4,6 +4,9 @@
   "private": true,
   "description": "Personal job search automation backend",
   "type": "module",
+  "engines": {
+    "node": ">=20 <21"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
