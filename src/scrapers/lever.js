@@ -47,7 +47,16 @@ export class LeverScraper extends BaseScraper {
         company: this.company,
         location: posting.categories?.location,
         job_type: posting.categories?.commitment,
-        description: posting.descriptionPlain?.slice(0, 2000) ?? '',
+        description: (posting.descriptionPlain ?? '')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 2000),
         apply_url: posting.applyUrl ?? posting.hostedUrl,
         source: `lever-${this.slug}`,
         posted_at: new Date(posting.createdAt).toISOString(),

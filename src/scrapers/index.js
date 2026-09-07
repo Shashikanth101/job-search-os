@@ -28,6 +28,7 @@ export function createScrapers(db) {
     { company: 'Postman', slug: 'postman' },
     { company: 'Razorpay', slug: 'razorpaysoftwareprivatelimited' },
     { company: 'Groww', slug: 'groww' },
+    { company: 'PhonePe', slug: 'phonepe' },
   ];
   const leverConfigs = [
     { company: 'CRED', slug: 'cred' },
