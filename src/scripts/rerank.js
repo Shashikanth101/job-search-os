@@ -8,7 +8,7 @@ async function main() {
     const jobs = database.prepare(`
       SELECT id, title, description, company
       FROM jobs
-      WHERE relevance_score = 0 OR company = 'Razorpay'
+      WHERE relevance_score = 0 OR relevance_score IS NULL
     `).all();
     const updateJob = database.prepare(`
       UPDATE jobs

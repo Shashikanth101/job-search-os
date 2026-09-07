@@ -34,16 +34,27 @@ export class GreenhouseScraper extends BaseScraper {
    * @returns {Promise<object>} Greenhouse API response.
    */
   async scrape() {
-    let response = await fetch(`https://boards-api.greenhouse.io/v1/boards/${this.slug}/jobs?content=true&limit=500`);
-    if (response.status === 404) {
-      response = await fetch(`https://job-boards.eu.greenhouse.io/${this.slug}/jobs?content=true&limit=500`);
-      if (!response.ok) {
-        throw new Error(`Greenhouse fetch failed for ${this.company}: standard endpoint returned 404 and EU endpoint returned ${response.status}`);
+    const endpoints = [
+      `https://boards-api.greenhouse.io/v1/boards/${this.slug}/jobs?content=true&limit=500`,
+      `https://job-boards.greenhouse.io/${this.slug}/jobs?content=true&limit=500`,
+      `https://job-boards.eu.greenhouse.io/${this.slug}/jobs?content=true&limit=500`,
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint);
+        if (!response.ok) continue;
+        const data = await response.json();
+        if (Array.isArray(data?.jobs)) {
+          console.log(`[Greenhouse] ${this.company}: succeeded with ${endpoint}`);
+          return data;
+        }
+      } catch {
+        continue;
       }
-    } else if (!response.ok) {
-      throw new Error(`Greenhouse fetch failed for ${this.company}: ${response.status}`);
     }
-    return response.json();
+
+    throw new Error(`Greenhouse fetch failed for ${this.company}: all three endpoints failed`);
   }
 
   /**

@@ -1,4 +1,5 @@
 import express from 'express';
+import manualLinks from './config/manual-links.js';
 import { serializeJob } from './db.js';
 
 /**
@@ -9,6 +10,14 @@ import { serializeJob } from './db.js';
 export function createApp(db) {
   const app = express();
   app.use(express.json());
+
+  /**
+   * Returns manually maintained career-page links.
+   * @param {import('express').Request} _req Express request.
+   * @param {import('express').Response} res Express response.
+   * @returns {import('express').Response} JSON response.
+   */
+  app.get('/api/manual-links', (_req, res) => res.json(manualLinks));
 
   /**
    * Lists jobs with optional new and minimum-score filters.

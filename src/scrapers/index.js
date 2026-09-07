@@ -1,6 +1,7 @@
 import { FirecrawlCareerScraper } from './firecrawl-scraper.js';
 import { GreenhouseScraper } from './greenhouse.js';
 import { LeverScraper } from './lever.js';
+import { SmartRecruitersScraper } from './smartrecruiters.js';
 import { SwiggyScraper } from './swiggy.js';
 
 /**
@@ -28,15 +29,20 @@ export function createScrapers(db) {
     { company: 'Postman', slug: 'postman' },
     { company: 'Razorpay', slug: 'razorpaysoftwareprivatelimited' },
     { company: 'Groww', slug: 'groww' },
-    { company: 'PhonePe', slug: 'phonepe' },
+    { company: 'Glean', slug: 'gleanwork' },
+  ];
+  const smartRecruitersConfigs = [
+    { company: 'PhonePe', slug: 'PHONEPELIMITED' },
+    { company: 'Zomato', slug: 'Zomato1' },
   ];
   const leverConfigs = [
     { company: 'CRED', slug: 'cred' },
     { company: 'Meesho', slug: 'meesho' },
   ];
   const greenhouseScrapers = greenhouseConfigs.map((config) => new GreenhouseScraper({ db, ...config }));
+  const smartRecruitersScrapers = smartRecruitersConfigs.map((config) => new SmartRecruitersScraper({ db, ...config }));
   const leverScrapers = leverConfigs.map((config) => new LeverScraper({ db, ...config }));
-  return [...configuredScrapers, new SwiggyScraper({ db }), ...greenhouseScrapers, ...leverScrapers];
+  return [...configuredScrapers, new SwiggyScraper({ db }), ...greenhouseScrapers, ...smartRecruitersScrapers, ...leverScrapers];
 }
 
 /**
