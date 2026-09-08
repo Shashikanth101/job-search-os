@@ -19,6 +19,8 @@ SCORING (1-10):
 3-4: IT services, outsourcing, vague role, weak frontend signal
 1-2: Backend-only, data, infra, staffing agency, wrong domain
 
+LOCATION GUIDANCE: Prefer India-based roles. If the job location is clearly US/Europe-only (contains United States, California, Texas, New York, UK, Europe, Canada, Australia) with no remote option mentioned, reduce the score by 2 points from what it would otherwise be. Do not hard cap. If location includes India, Bangalore, Bengaluru, Pune, Hyderabad, Gurgaon, Gurugram, Delhi, Mumbai, Chennai, or Remote — no reduction. If location is unclear or not mentioned — no reduction.
+
 Return ONLY valid JSON, no other text:
 {"score": <1-10>, "reason": "<one sentence>"}`;
 

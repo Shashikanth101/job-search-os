@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 ## Current Phase
-Phase 1 COMPLETE — Moving to Phase 2 (Dashboard)
+Phase 2 — Dashboard (core complete, resume generation remaining)
 
 ## What's Built and Working
 - [x] SQLite DB with jobs/applications/outreach schema
@@ -38,11 +38,12 @@ Phase 1 COMPLETE — Moving to Phase 2 (Dashboard)
 - Swiggy, CRED, Groww currently have no open frontend roles
 
 ## Phase 2 (Dashboard) — Current Focus
-- [ ] Build React dashboard (Vite) showing ranked job feed
-- [ ] Job cards with title, company, score, reason, apply link
-- [ ] Filter by score, company, new/seen
-- [ ] Manual links section showing custom-platform companies
-- [ ] Application status tracking (saved/applied/followed up)
+- [x] Build React dashboard (Vite) showing ranked job feed
+- [x] Job cards with title, company, score, reason, apply link
+- [x] Filter by score, company, new/seen
+- [x] India-first location scoring and API filtering; dashboard defaults to India Only with an All Locations toggle
+- [x] Manual links section showing custom-platform companies
+- [x] Application status tracking (saved/applied/followed up)
 
 ## Phase 3 (Outreach) — Not Started
 - [ ] LinkedIn URL generator per company
