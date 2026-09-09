@@ -12,7 +12,8 @@
     "frontend": "cd frontend && npm install && npm run dev",
     "dev": "concurrently 'node src/server.js' 'cd frontend && npm run dev'",
     "scrape": "node src/scrape.js",
-    "rerank": "node src/scripts/rerank.js"
+    "rerank": "node src/scripts/rerank.js",
+    "generate-resume": "node src/scripts/generate-resume.js"
   },
   "dependencies": {
     "@mendable/firecrawl-js": "^1.29.0",

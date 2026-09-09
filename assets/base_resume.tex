@@ -1,0 +1,186 @@
+%-------------------------
+% Resume in Latex
+% Based on: https://github.com/sb2nov/resume
+% License: MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Huge \scshape Shashikanth} \\ \vspace{1pt}
+    \small Bangalore, KA, India $|$
+    \small +91 8660259406 $|$
+    \small shashikanth15299@gmail.com $|$
+    \href{https://github.com/Shashikanth101}{\underline{Github}} $|$
+    \href{https://www.linkedin.com/in/shashikanth-p-62658b17b/}{\underline{Linkedin}}
+\end{center}
+
+%-----------SKILLS-----------
+\section{Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+
+        \textbf{AI \& Agentic Systems}{: LLM Integration, Tool-Calling/Function-Calling, RAG, MCP (Model Context Protocol)} \\
+         \textbf{Frontend}{: React, Next.js (SSR/SSG/ISR), TypeScript, JavaScript (ES6+), HTML5, CSS3, React Native} \\
+         \textbf{State \& Data}{: Redux, Zustand, GraphQL, REST APIs, API Orchestration, Tanstack Query} \\
+         \textbf{Architecture}{: Micro-Frontends (Webpack Module Federation), Webpack, SSR, Authentication Flows, System Design} \\
+         \textbf{Backend, Tooling \& Practices}{: Node.js, PostgreSQL, Jest, Cypress, Git, CI/CD, Chrome Extensions, Agile/Scrum}
+     
+     }}
+ \end{itemize}
+ 
+ 
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+ 
+    \resumeSubheading
+      {Livspace}{Bangalore, India}
+      {SDE 2}{Nov. 2024 -- March 2026}
+      \resumeItemListStart
+        
+        \resumeItem{Owned core frontend domains (Cart \& Account) in a revenue-critical Next.js (SSR) platform serving a \textbf{1M+ users} base with \textbf{99.9\% uptime}, supporting a projected \textbf{\$ 25M+ annual product revenue} stream}
+        \resumeItem{Built the complete Account module (Profile, Addresses, Wallet, Order History), integrating \textbf{20+ backend APIs} with authentication guards, token refresh handling, and resilient API orchestration}
+        \resumeItem{Led frontend workflow for \textbf{Delivery Challan} and \textbf{E-Way Bill generation} in the Logistics Management System, enabling compliant movement of \textbf{3K--4K consignments daily} across India}
+        \resumeItem{Implemented \textbf{Micro-Frontend architecture} using \textbf{Webpack Module Federation}, building a shared, highly reusable frontend platform enabling independent deployments within a unified Composer shell}
+        \resumeItem{Owned Invoice Management workflows in TARS (manufacturing pipeline system), supporting processing of \textbf{5K--6K furnishing products daily} across vendor factories pan-India}
+        \resumeItem{Partnered with Finance and Store Central teams to stabilize \textbf{audit-critical billing workflows} for IPO readiness}
+        \resumeItem{Improved frontend \textbf{delivery velocity by 4x} using AI-assisted workflows and internal tooling, reducing multi-day UI implementations to same-day execution while maintaining review standards}
+        \resumeItem{\textbf{Conducted 20+ technical interviews} for SDE 1/2 roles, evaluating frontend architecture, problem-solving ability, and code quality as part of hiring panel}
+        
+      
+        
+      \resumeItemListEnd
+ 
+    \resumeSubheading
+      {StartUs Insights}{Remote}
+      {Frontend Engineer}{Dec. 2020 -- Nov. 2024}
+      \resumeItemListStart
+        
+        \resumeItem{Migrated a large-scale SaaS platform from jQuery to React, \textbf{improving development velocity by 70\%} and enabling scalable architecture}
+        \resumeItem{Optimized GraphQL data-fetching and caching strategies, \textbf{reducing server load by 25\%}}
+        \resumeItem{Led end-to-end development of a Chrome Extension (\textbf{500+ active business clients}), owning architecture, deployment, and maintenance to render structured company intelligence from any webpage}
+        \resumeItem{Co-architected a B2B SaaS React application to search, filter, and visualize millions of company datasets, with several interactive charts and a modular theming system supporting light and dark modes}
+        
+      \resumeItemListEnd
+ 
+  \resumeSubHeadingListEnd
+ 
+ 
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+
+    \resumeProjectHeading
+          {\textbf{Public Services AI Agent} $|$ Build What Moves India Hackathon (AEOS x OpenAI, 13,000+ participants)}{}
+          \resumeItemListStart
+
+
+            \resumeItem{Solo-built \textbf{Seva}, an \textbf{agentic AI} assistant providing citizens a unified \textbf{conversational UI} over EPFO, IRCTC, and Parivahan services}
+            \resumeItem{Architected a \textbf{tool-calling orchestration layer} where an \textbf{LLM} dynamically selects and invokes tools via \textbf{function-calling} against defined schemas, integrating \textbf{MCP} servers for government-style API access}
+            \resumeItem{Built a \textbf{Retrieval-Augmented Generation (RAG)} pipeline for grounding responses in official public-service guidance, complementing structured API tools used for authoritative account data and actions}
+            \resumeItem{Designed application-owned validation and confirmation flows separating LLM intent interpretation from authoritative state, preventing stale or cross-service actions from triggering mutations}
+            \resumeItem{Developed the \textbf{React (Vite)}, \textbf{Node.js}, and \textbf{PostgreSQL} full stack, persisting user accounts and conversation history, with a response-rendering layer mapping LLM outputs to structured UI cards}
+
+            
+          \resumeItemListEnd
+ 
+    \resumeSubHeadingListEnd
+    
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Scaler Academy}{Online}
+      {Advanced Software Development \& DSA}{2023}
+    \resumeSubheading
+      {M. S. Ramaiah Institute of Technology}{Bangalore, India}
+      {B.E. in Electronics \& Communication}{2020}
+  \resumeSubHeadingListEnd
+
+
+%-------------------------------------------
+\end{document}

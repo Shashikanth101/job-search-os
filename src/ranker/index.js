@@ -10,7 +10,7 @@ PROFILE:
 - Secondary: Node.js, React Native, Chrome Extensions, Jest, Cypress
 - Domain: E-commerce, Logistics, Inventory/Vendor/Orders Management, B2B SaaS
 - Target level: SDE 2 / Senior Engineer
-- Target locations: Bangalore, Hyderabad, Gurgaon, Mumbai, Pune, Remote
+- Target locations: Bangalore, Noida, Gurgaon, Mumbai, Pune, Hyderabad, Remote
 
 SCORING (1-10):
 9-10: Frontend/React role at strong product company, matches stack, right level

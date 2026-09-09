@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 ## Current Phase
-Phase 2 — Dashboard (core complete, resume generation remaining)
+Phase 2 — Dashboard (core complete, resume generation complete)
 
 ## What's Built and Working
 - [x] SQLite DB with jobs/applications/outreach schema
@@ -44,6 +44,7 @@ Phase 2 — Dashboard (core complete, resume generation remaining)
 - [x] India-first location scoring and API filtering; dashboard defaults to India Only with an All Locations toggle
 - [x] Manual links section showing custom-platform companies
 - [x] Application status tracking (saved/applied/followed up)
+- [x] Resume generation and pdflatex compilation pipeline
 
 ## Phase 3 (Outreach) — Not Started
 - [ ] LinkedIn URL generator per company
@@ -51,7 +52,6 @@ Phase 2 — Dashboard (core complete, resume generation remaining)
 - [ ] Follow-up reminder system
 
 ## Known Issues
-- gpt-5.6-luna: switch to gpt-4o-mini for stability
 - Swiggy careers page currently shows no jobs
 - Node 24 incompatible with better-sqlite3 — use Node 20 LTS via nvm.
 

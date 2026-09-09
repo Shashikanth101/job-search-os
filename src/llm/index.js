@@ -39,16 +39,16 @@ const PROVIDERS = {
 
 let logged = false;
 
-/**
- * Send a chat completion request to the configured LLM provider.
- * @param {string} systemPrompt
- * @param {string} userMessage
- * @returns {Promise<string>} - the model's text response
- */
-export async function chat(systemPrompt, userMessage) {
-  const provider = process.env.LLM_PROVIDER || 'anthropic';
-  const apiKey = process.env.LLM_API_KEY;
-  const model = process.env.LLM_MODEL || PROVIDERS[provider]?.defaultModel;
+async function sendChat(systemPrompt, userMessage, environmentPrefix) {
+  const isResumeClient = environmentPrefix === 'RESUME';
+  const provider = process.env[`${environmentPrefix}_LLM_PROVIDER`]
+    || (isResumeClient ? process.env.LLM_PROVIDER : undefined)
+    || 'anthropic';
+  const apiKey = process.env[`${environmentPrefix}_LLM_API_KEY`]
+    || (isResumeClient ? process.env.LLM_API_KEY : undefined);
+  const model = process.env[`${environmentPrefix}_LLM_MODEL`]
+    || (isResumeClient ? process.env.LLM_MODEL : undefined)
+    || PROVIDERS[provider]?.defaultModel;
   const config = PROVIDERS[provider];
 
   if (!config) {
@@ -68,7 +68,7 @@ export async function chat(systemPrompt, userMessage) {
     body: JSON.stringify({
       model,
       ...(provider === 'openai'
-        ? { max_completion_tokens: 1024 }
+        ? { max_completion_tokens: 16000 }
         : { max_tokens: 1024 }),
       messages: [
         { role: 'system', content: systemPrompt },
@@ -83,5 +83,29 @@ export async function chat(systemPrompt, userMessage) {
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  const content = data.choices[0].message.content;
+  if (data.choices[0].finish_reason === 'length') {
+    console.warn('[LLM Warning] Response was cut off due to token limit. Consider increasing max_completion_tokens.');
+  }
+  return content;
+}
+
+/**
+ * Send a chat completion request to the configured LLM provider.
+ * @param {string} systemPrompt
+ * @param {string} userMessage
+ * @returns {Promise<string>} - the model's text response
+ */
+export async function chat(systemPrompt, userMessage) {
+  return sendChat(systemPrompt, userMessage, 'LLM');
+}
+
+/**
+ * Send a resume-tailoring chat completion using the optional dedicated LLM configuration.
+ * @param {string} systemPrompt
+ * @param {string} userMessage
+ * @returns {Promise<string>} - the model's text response
+ */
+export async function resumeChat(systemPrompt, userMessage) {
+  return sendChat(systemPrompt, userMessage, 'RESUME');
 }

@@ -1,6 +1,8 @@
 import express from 'express';
 import manualLinks from './config/manual-links.js';
 import { serializeJob } from './db.js';
+import { compileResume } from './resume/compiler.js';
+import { generateResume } from './resume/generator.js';
 
 const APPLICATION_STATUSES = ['saved', 'applied', 'interviewing', 'rejected', 'offer'];
 
@@ -155,6 +157,38 @@ export function createApp(db) {
       WHERE id = @id
     `).run({ id: applicationId, ...input });
     return res.json(db.prepare('SELECT * FROM applications WHERE id = ?').get(applicationId));
+  });
+
+  /**
+   * Generates and compiles a tailored resume for a job.
+   * @param {import('express').Request} req Express request.
+   * @param {import('express').Response} res Express response.
+   * @returns {Promise<import('express').Response>} JSON response.
+   */
+  app.post('/api/resume/generate', async (req, res) => {
+    const { jobId, jobTitle, company, jobDescription } = req.body ?? {};
+    if (jobId === undefined || jobId === null || jobId === '' || !jobTitle || !company || !jobDescription) {
+      return res.status(400).json({ success: false, error: 'jobId, jobTitle, company, and jobDescription are required.' });
+    }
+
+    try {
+      const texPath = await generateResume({ jobId, jobTitle, company, jobDescription });
+      const pdfPath = await compileResume(texPath);
+      const job = db.prepare('SELECT id FROM jobs WHERE id = ? OR job_id = ? LIMIT 1').get(jobId, String(jobId));
+
+      if (job) {
+        const application = db.prepare('SELECT id FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(job.id);
+        if (application) {
+          db.prepare('UPDATE applications SET resume_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(pdfPath, application.id);
+        } else {
+          db.prepare('INSERT INTO applications (job_id, resume_path, status) VALUES (?, ?, ?)').run(job.id, pdfPath, 'saved');
+        }
+      }
+
+      return res.json({ success: true, pdfPath, texPath });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
   });
 
   /**
