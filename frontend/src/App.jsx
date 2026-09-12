@@ -25,6 +25,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('jobs');
   const [manualFormOpen, setManualFormOpen] = useState(false);
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualResult, setManualResult] = useState(null);
   const [company, setCompany] = useState('All');
   const [applicationStatus, setApplicationStatus] = useState('All');
   const [minScore, setMinScore] = useState(5);
@@ -57,15 +58,18 @@ export function App() {
     const formEl = event.currentTarget;
     event.preventDefault();
     setManualSubmitting(true);
+    setManualResult(null);
     const form = new FormData(event.currentTarget);
     const result = await submitManualApplicationRequest({
       company: form.get('company'),
       title: form.get('title'),
       jobDescription: form.get('jobDescription'),
       applyUrl: form.get('applyUrl'),
+      location: form.get('location'),
     });
     setManualSubmitting(false);
     if (result) {
+      setManualResult(result);
       formEl.reset();
       setManualFormOpen(false);
     }
@@ -83,7 +87,7 @@ export function App() {
   const visibleJobs = useMemo(
     () => jobs
       .filter((job) => company === 'All' || job.company === company)
-      .filter((job) => Number(job.relevance_score) >= minScore)
+      .filter((job) => job.source === 'manual' || Number(job.relevance_score) >= minScore)
       .filter((job) => !newOnly || job.is_new)
       .filter((job) => applicationStatus === 'All' || (job.application_status || 'untracked') === applicationStatus)
       .sort((a, b) => Number(b.relevance_score) - Number(a.relevance_score)),
@@ -117,6 +121,7 @@ export function App() {
           onToggle={() => setManualFormOpen((open) => !open)}
           submitting={manualSubmitting}
           onSubmit={submitManualApplication}
+          result={manualResult}
         />
 
         <TabNav activeTab={activeTab} onChange={setActiveTab} />

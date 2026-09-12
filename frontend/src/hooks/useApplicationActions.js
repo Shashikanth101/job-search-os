@@ -9,7 +9,7 @@ import { useState } from 'react';
  * @returns {{
  *   updatingApplicationId: (string|number|null),
  *   error: string,
- *   submitManualApplication: (payload: {company: string, title: string, jobDescription: string, applyUrl: string}) => Promise<object|null>,
+ *   submitManualApplication: (payload: {company: string, title: string, jobDescription: string, applyUrl: string, location?: string}) => Promise<object|null>,
  *   saveApplication: (job: object, changes: object) => Promise<object|null>,
  *   changeApplicationStatus: (job: object, status: string) => Promise<object|null>,
  *   markFollowedUp: (reminder: object) => Promise<void>,
@@ -29,8 +29,12 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not save the manual application.');
-      await refetchJobs();
-      await refetchStats();
+      try {
+        await refetchJobs();
+        await refetchStats();
+      } catch (refreshError) {
+        setError(`The application was saved, but the dashboard could not refresh: ${refreshError.message}`);
+      }
       return result;
     } catch (requestError) {
       setError(requestError.message || 'Could not save the manual application.');

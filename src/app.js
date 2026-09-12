@@ -72,20 +72,21 @@ export function createApp(db) {
     if (req.query.minScore !== undefined) {
       const minScore = Number(req.query.minScore);
       if (!Number.isFinite(minScore)) return res.status(400).json({ error: 'minScore must be a number.' });
-      clauses.push('relevance_score >= @minScore');
+      clauses.push("(source = 'manual' OR relevance_score >= @minScore)");
       params.minScore = minScore;
     }
     if (req.query.location === 'india') {
       const includedLocations = ['Bangalore', 'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Gurgaon', 'Gurugram', 'Delhi', 'Noida', 'Chennai', 'Remote'];
       const excludedLocations = ['United States', 'California', 'Texas', 'New York', 'Austin', 'Malaysia', 'Mountain View', 'San Francisco', 'Cupertino'];
-      clauses.push(`(${includedLocations.map((location, index) => {
+      const locationClauses = [`(${includedLocations.map((location, index) => {
         params[`includedLocation${index}`] = `%${location.toLowerCase()}%`;
         return `LOWER(location) LIKE @includedLocation${index}`;
-      }).join(' OR ')})`);
+      }).join(' OR ')})`];
       excludedLocations.forEach((location, index) => {
         params[`excludedLocation${index}`] = `%${location.toLowerCase()}%`;
-        clauses.push(`LOWER(location) NOT LIKE @excludedLocation${index}`);
+        locationClauses.push(`LOWER(location) NOT LIKE @excludedLocation${index}`);
       });
+      clauses.push(`(source = 'manual' OR (${locationClauses.join(' AND ')}))`);
     }
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const jobs = db.prepare(`
@@ -109,9 +110,12 @@ export function createApp(db) {
    * @returns {Promise<import('express').Response>} JSON response.
    */
   app.post('/api/jobs/manual', async (req, res) => {
-    const { company, title, jobDescription, applyUrl, status = 'saved' } = req.body ?? {};
+    const { company, title, jobDescription, applyUrl, location, status = 'saved' } = req.body ?? {};
     if (!company || !title || !jobDescription || !applyUrl) {
       return res.status(400).json({ error: 'company, title, jobDescription, and applyUrl are required.' });
+    }
+    if (location != null && typeof location !== 'string') {
+      return res.status(400).json({ error: 'location must be a string.' });
     }
 
     const applicationInput = getApplicationInput({ status });
@@ -120,9 +124,9 @@ export function createApp(db) {
     try {
       const jobId = `manual-${Date.now()}`;
       const result = db.prepare(`
-        INSERT INTO jobs (job_id, title, company, description, apply_url, source)
-        VALUES (?, ?, ?, ?, ?, 'manual')
-      `).run(jobId, title, company, jobDescription, applyUrl);
+        INSERT INTO jobs (job_id, title, company, description, apply_url, location, source)
+        VALUES (?, ?, ?, ?, ?, ?, 'manual')
+      `).run(jobId, title, company, jobDescription, applyUrl, location?.trim() || null);
       const { score, reason } = await rankJob(title, jobDescription, company);
       db.prepare('UPDATE jobs SET relevance_score = ?, relevance_reason = ? WHERE id = ?').run(score, reason, result.lastInsertRowid);
       const application = db.prepare(`
