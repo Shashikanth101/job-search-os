@@ -39,23 +39,40 @@ const PROVIDERS = {
 
 let logged = false;
 
-async function sendChat(systemPrompt, userMessage, environmentPrefix) {
-  const isResumeClient = environmentPrefix === 'RESUME';
-  const provider = process.env[`${environmentPrefix}_LLM_PROVIDER`]
-    || (isResumeClient ? process.env.LLM_PROVIDER : undefined)
-    || 'anthropic';
-  const apiKey = process.env[`${environmentPrefix}_LLM_API_KEY`]
-    || (isResumeClient ? process.env.LLM_API_KEY : undefined);
-  const model = process.env[`${environmentPrefix}_LLM_MODEL`]
-    || (isResumeClient ? process.env.LLM_MODEL : undefined)
-    || PROVIDERS[provider]?.defaultModel;
+/**
+ * Ranker settings come directly from LLM_*; resume provider, key, and model
+ * each fall back from RESUME_LLM_* to LLM_* when unset or empty.
+ * URL overrides are client-scoped and Ollama-only; a resume URL override
+ * additionally requires RESUME_LLM_PROVIDER=ollama and never falls back to LLM_BASE_URL.
+ */
+async function sendChat(systemPrompt, userMessage, client) {
+  const settings = client === 'resume'
+    ? {
+      provider: process.env.RESUME_LLM_PROVIDER || process.env.LLM_PROVIDER,
+      apiKey: process.env.RESUME_LLM_API_KEY || process.env.LLM_API_KEY,
+      model: process.env.RESUME_LLM_MODEL || process.env.LLM_MODEL,
+      baseURL: process.env.RESUME_LLM_PROVIDER === 'ollama'
+        ? process.env.RESUME_LLM_BASE_URL
+        : undefined,
+    }
+    : {
+      provider: process.env.LLM_PROVIDER,
+      apiKey: process.env.LLM_API_KEY,
+      model: process.env.LLM_MODEL,
+      baseURL: process.env.LLM_BASE_URL,
+    };
+  const provider = settings.provider || 'anthropic';
+  const apiKey = settings.apiKey;
+  const model = settings.model || PROVIDERS[provider]?.defaultModel;
   const config = PROVIDERS[provider];
 
   if (!config) {
     throw new Error(`Unknown LLM provider: "${provider}". Valid options: ${Object.keys(PROVIDERS).join(', ')}`);
   }
 
-  const baseURL = process.env.LLM_BASE_URL || config.baseURL;
+  const baseURL = provider === 'ollama'
+    ? settings.baseURL || config.baseURL
+    : config.baseURL;
 
   if (!logged) {
     console.log(`[LLM] provider=${provider} model=${model} baseURL=${baseURL}`);
@@ -97,7 +114,7 @@ async function sendChat(systemPrompt, userMessage, environmentPrefix) {
  * @returns {Promise<string>} - the model's text response
  */
 export async function chat(systemPrompt, userMessage) {
-  return sendChat(systemPrompt, userMessage, 'LLM');
+  return sendChat(systemPrompt, userMessage, 'ranker');
 }
 
 /**
@@ -107,5 +124,5 @@ export async function chat(systemPrompt, userMessage) {
  * @returns {Promise<string>} - the model's text response
  */
 export async function resumeChat(systemPrompt, userMessage) {
-  return sendChat(systemPrompt, userMessage, 'RESUME');
+  return sendChat(systemPrompt, userMessage, 'resume');
 }

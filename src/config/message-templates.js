@@ -1,0 +1,5 @@
+export default {
+  coldRecruiter: `Hi {{name}}, I came across {{company}} and I'm genuinely impressed by the product. I'm a Senior Frontend Engineer with 5+ years of experience in React, Next.js, and micro-frontend architecture, recently building a 1M+ user e-commerce platform at Livspace. I'd love to explore frontend opportunities at {{company}} — would you be open to a quick chat?`,
+  coldHiringManager: `Hi {{name}}, I've been following {{company}}'s engineering work closely. I'm a Senior Frontend Engineer with deep experience in React, Next.js, and micro-frontend architecture at scale. I built and owned core frontend domains at Livspace serving 1M+ users. I'd love to learn more about your frontend team and share what I've been working on — open to connecting?`,
+  followUp: `Hi {{name}}, I wanted to follow up on my application for the {{role}} role at {{company}}. I remain very interested and would love the opportunity to discuss how my experience with React, Next.js, and micro-frontend architecture could contribute to your team. Happy to share more details if helpful.`,
+};

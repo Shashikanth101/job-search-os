@@ -1,10 +1,13 @@
 import express from 'express';
+import linkedinOutreach from './config/linkedin-outreach.js';
 import manualLinks from './config/manual-links.js';
+import messageTemplates from './config/message-templates.js';
+import { rankJob } from './ranker/index.js';
 import { serializeJob } from './db.js';
 import { compileResume } from './resume/compiler.js';
 import { generateResume } from './resume/generator.js';
 
-const APPLICATION_STATUSES = ['saved', 'applied', 'interviewing', 'rejected', 'offer'];
+const APPLICATION_STATUSES = ['saved', 'applied', 'interviewing', 'rejected', 'offer', 'followed_up'];
 
 function parseId(value) {
   const id = Number(value);
@@ -39,6 +42,22 @@ export function createApp(db) {
    * @returns {import('express').Response} JSON response.
    */
   app.get('/api/manual-links', (_req, res) => res.json(manualLinks));
+
+  /**
+   * Returns LinkedIn recruiter and hiring-manager search links.
+   * @param {import('express').Request} _req Express request.
+   * @param {import('express').Response} res Express response.
+   * @returns {import('express').Response} JSON response.
+   */
+  app.get('/api/linkedin-outreach', (_req, res) => res.json(linkedinOutreach));
+
+  /**
+   * Returns reusable outreach message templates.
+   * @param {import('express').Request} _req Express request.
+   * @param {import('express').Response} res Express response.
+   * @returns {import('express').Response} JSON response.
+   */
+  app.get('/api/message-templates', (_req, res) => res.json(messageTemplates));
 
   /**
    * Lists jobs with optional new, minimum-score, and location filters.
@@ -81,6 +100,40 @@ export function createApp(db) {
       ORDER BY relevance_score DESC NULLS LAST, found_at DESC
     `).all(params);
     return res.json(jobs.map(serializeJob));
+  });
+
+  /**
+   * Creates and scores a manually entered job application.
+   * @param {import('express').Request} req Express request.
+   * @param {import('express').Response} res Express response.
+   * @returns {Promise<import('express').Response>} JSON response.
+   */
+  app.post('/api/jobs/manual', async (req, res) => {
+    const { company, title, jobDescription, applyUrl, status = 'saved' } = req.body ?? {};
+    if (!company || !title || !jobDescription || !applyUrl) {
+      return res.status(400).json({ error: 'company, title, jobDescription, and applyUrl are required.' });
+    }
+
+    const applicationInput = getApplicationInput({ status });
+    if (applicationInput.error) return res.status(400).json({ error: applicationInput.error });
+
+    try {
+      const jobId = `manual-${Date.now()}`;
+      const result = db.prepare(`
+        INSERT INTO jobs (job_id, title, company, description, apply_url, source)
+        VALUES (?, ?, ?, ?, ?, 'manual')
+      `).run(jobId, title, company, jobDescription, applyUrl);
+      const { score, reason } = await rankJob(title, jobDescription, company);
+      db.prepare('UPDATE jobs SET relevance_score = ?, relevance_reason = ? WHERE id = ?').run(score, reason, result.lastInsertRowid);
+      const application = db.prepare(`
+        INSERT INTO applications (job_id, applied_at, status)
+        VALUES (?, ?, ?)
+      `).run(result.lastInsertRowid, status === 'applied' ? new Date().toISOString() : null, status);
+      const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(result.lastInsertRowid);
+      return res.status(201).json({ ...serializeJob(job), application_id: application.lastInsertRowid, application_status: status });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   });
 
   /**
@@ -208,7 +261,30 @@ export function createApp(db) {
         (SELECT COUNT(*) FROM applications WHERE follow_up_due IS NOT NULL) AS pending_follow_ups
       FROM jobs
     `).get();
-    return res.json({ ...stats, average_score: Number(stats.average_score) });
+    const followUps = db.prepare(`
+      SELECT
+        applications.id AS application_id,
+        jobs.id AS job_id,
+        jobs.company,
+        jobs.title,
+        applications.status,
+        applications.applied_at,
+        applications.updated_at,
+        CAST(julianday('now') - julianday(
+          CASE WHEN applications.status = 'applied' THEN applications.applied_at ELSE applications.updated_at END
+        ) AS INTEGER) AS days_since_update
+      FROM applications
+      JOIN jobs ON jobs.id = applications.job_id
+      WHERE (applications.status = 'applied' AND applications.applied_at IS NOT NULL AND applications.applied_at < datetime('now', '-5 days'))
+         OR (applications.status = 'followed_up' AND applications.updated_at < datetime('now', '-10 days'))
+      ORDER BY days_since_update DESC
+    `).all();
+    return res.json({
+      ...stats,
+      average_score: Number(stats.average_score),
+      followUpsDue: followUps.length,
+      followUps,
+    });
   });
 
   return app;

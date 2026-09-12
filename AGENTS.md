@@ -24,6 +24,11 @@ Always use Node 20 LTS. Run nvm use 20 before starting any session. Node 24 caus
 - Graceful error handling — scrapers should never crash the whole run
 - Log prefix format: [ComponentName] message
 
+## Frontend
+Frontend-specific architecture conventions (component structure, hooks, 
+props, file-size limits) are documented in frontend/AGENTS.md — always 
+read that file before making frontend changes.
+
 ## What Not To Touch
 - src/db.js schema — any schema changes go through a migration
 - .env.example — always keep in sync with any new env vars added
