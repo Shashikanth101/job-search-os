@@ -126,6 +126,59 @@ const companies = [
   { company: 'Tower Research', linkedinCompanyId: null },
   { company: 'Wells Fargo', linkedinCompanyId: null },
   { company: 'NatWest Group', linkedinCompanyId: null },
+
+  // Enterprise Workflow & Specialized Agents
+  { company: 'Perplexity AI', linkedinCompanyId: null },
+  { company: 'Writer', linkedinCompanyId: null },
+  { company: 'Abridge', linkedinCompanyId: null },
+  { company: 'Decagon', linkedinCompanyId: null },
+  { company: 'Hebbia', linkedinCompanyId: null },
+  { company: 'Gamma', linkedinCompanyId: null },
+  { company: 'Cyera', linkedinCompanyId: null },
+
+  // Frameworks & AI Coding
+  { company: 'Anysphere (Cursor)', linkedinCompanyId: null },
+  { company: 'Cognition AI', linkedinCompanyId: null },
+  { company: 'Poolside AI', linkedinCompanyId: null },
+  { company: 'Replit', linkedinCompanyId: null },
+  { company: 'LangChain', linkedinCompanyId: null },
+  { company: 'Fireworks AI', linkedinCompanyId: null },
+
+  // Frontier Labs
+  { company: 'OpenAI', linkedinCompanyId: null },
+  { company: 'Anthropic', linkedinCompanyId: null },
+  { company: 'Google DeepMind', linkedinCompanyId: null },
+  { company: 'Meta AI', linkedinCompanyId: null },
+  { company: 'xAI', linkedinCompanyId: null },
+  { company: 'Mistral AI', linkedinCompanyId: null },
+  { company: 'DeepSeek', linkedinCompanyId: null },
+  { company: 'Safe Superintelligence Inc.', linkedinCompanyId: null },
+  { company: 'Cohere', linkedinCompanyId: null },
+  { company: 'Inflection AI', linkedinCompanyId: null },
+  { company: 'AI21 Labs', linkedinCompanyId: null },
+  { company: '01.AI', linkedinCompanyId: null },
+  { company: 'Moonshot AI', linkedinCompanyId: null },
+  { company: 'Zhipu AI', linkedinCompanyId: null },
+  { company: 'Reka AI', linkedinCompanyId: null },
+  { company: 'Liquid AI', linkedinCompanyId: null },
+  { company: 'Contextual AI', linkedinCompanyId: null },
+
+  // Multimodal & Generative Media
+  { company: 'Runway', linkedinCompanyId: null },
+  { company: 'Midjourney', linkedinCompanyId: null },
+  { company: 'ElevenLabs', linkedinCompanyId: null },
+  { company: 'Stability AI', linkedinCompanyId: null },
+  { company: 'Black Forest Labs', linkedinCompanyId: null },
+  { company: 'HeyGen', linkedinCompanyId: null },
+  { company: 'Luma AI', linkedinCompanyId: null },
+
+  // Infrastructure & Ecosystem
+  { company: 'Hugging Face', linkedinCompanyId: null },
+  { company: 'Scale AI', linkedinCompanyId: null },
+  { company: 'CoreWeave', linkedinCompanyId: null },
+  { company: 'Cerebras Systems', linkedinCompanyId: null },
+  { company: 'Groq', linkedinCompanyId: null },
+  { company: 'OpenRouter', linkedinCompanyId: null },
 ];
 
 function searchUrl(company, linkedinCompanyId, keywords) {

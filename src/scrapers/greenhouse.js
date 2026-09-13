@@ -1,4 +1,5 @@
 import { BaseScraper } from './base-scraper.js';
+import { preFilterJobs } from './pre-filter.js';
 
 function cleanHtml(raw = '') {
   return raw
@@ -63,11 +64,7 @@ export class GreenhouseScraper extends BaseScraper {
    * @returns {Array<object>} Frontend-relevant normalized jobs.
    */
   parseJobs(response) {
-    const relevantTerms = ['frontend', 'front-end', 'react', 'ui engineer', 'sde', 'software development engineer', 'software engineer', 'member of technical staff', 'mts', 'web engineer', 'full stack', 'fullstack'];
-    const rawJobs = response?.jobs ?? [];
-    const filteredJobs = rawJobs.filter((job) => relevantTerms.some((term) => job.title?.toLowerCase().includes(term)));
-    console.log(`[Greenhouse] ${this.company}: fetched ${rawJobs.length} total jobs, ${filteredJobs.length} passed filter`);
-    return filteredJobs
+    return preFilterJobs((response?.jobs ?? [])
       .map((job) => ({
         job_id: job.id,
         title: job.title,
@@ -78,6 +75,6 @@ export class GreenhouseScraper extends BaseScraper {
         apply_url: job.absolute_url,
         source: `greenhouse-${this.slug}`,
         posted_at: job.updated_at,
-      }));
+      })), this);
   }
 }

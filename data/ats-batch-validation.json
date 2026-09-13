@@ -1,0 +1,1361 @@
+{
+  "started_at": "2026-09-13T17:54:27.578Z",
+  "completed_at": "2026-09-13T18:14:46.831Z",
+  "configured_scrapers": 75,
+  "new_scraper_entries": 66,
+  "requested_scraper_entries": 69,
+  "scraper_failures": [],
+  "ranking_error_lines": [
+    "Ranker failed for \"Sr. Solutions Architect\" at Databricks: fetch failed",
+    "Ranker failed for \"Sr. Solutions Architect\" at Databricks: fetch failed",
+    "Ranker failed for \"Sr. Solutions Engineer\" at Databricks: fetch failed"
+  ],
+  "before_job_count": 39,
+  "after_job_count": 1435,
+  "all_new_rows": 1396,
+  "new_rows_from_added_scrapers": 1284,
+  "new_rows_from_all_requested_scrapers": 1328,
+  "saved_including_updates_from_added_scrapers": 1284,
+  "new_scraper_filter_totals": {
+    "fetched": 9564,
+    "denied_title": 3328,
+    "denied_location": 4952,
+    "allowed_title": 253,
+    "ambiguous_title": 1031,
+    "accepted": 1284
+  },
+  "new_scraper_low_score_jobs": 1179,
+  "new_scraper_score_at_least_5": 105,
+  "new_scraper_normalized_locations": {
+    "Bengaluru": 378,
+    "United Arab Emirates": 19,
+    "United Kingdom": 312,
+    "Chennai": 34,
+    "India": 89,
+    "Pune": 19,
+    "Hyderabad": 37,
+    "Singapore": 86,
+    "null": 151,
+    "Netherlands": 39,
+    "Mumbai": 40,
+    "Gurugram": 5,
+    "Noida": 75
+  },
+  "spot_check": {
+    "zscaler": {
+      "raw_count": 371,
+      "account_executives_fetched": 86,
+      "account_executives_accepted": 0,
+      "rejected_samples": [
+        {
+          "title": "Account Executive",
+          "location": "Remote - Canberra, Australia"
+        },
+        {
+          "title": "Account Executive - Commercial",
+          "location": "Tokyo, JPN"
+        },
+        {
+          "title": "Account Executive - Commercial",
+          "location": "Tokyo, JPN"
+        }
+      ],
+      "accepted": 51
+    },
+    "perplexity_greenhouse": [
+      {
+        "url": "https://boards-api.greenhouse.io/v1/boards/perplexityai/jobs?content=true&limit=500",
+        "status": 404
+      },
+      {
+        "url": "https://job-boards.greenhouse.io/perplexityai/jobs?content=true&limit=500",
+        "status": 404
+      },
+      {
+        "url": "https://job-boards.eu.greenhouse.io/perplexityai/jobs?content=true&limit=500",
+        "status": 404
+      }
+    ],
+    "zscaler_account_executives_in_database": 0
+  },
+  "results": [
+    {
+      "source": "swiggy-careers",
+      "saved": 0,
+      "company": "Swiggy",
+      "new_entry": false,
+      "newly_inserted": 0,
+      "pre_filter": null
+    },
+    {
+      "source": "greenhouse-postman",
+      "saved": 9,
+      "company": "Postman",
+      "new_entry": false,
+      "newly_inserted": 8,
+      "pre_filter": {
+        "source": "greenhouse-postman",
+        "fetched": 64,
+        "denied_title": 26,
+        "denied_location": 29,
+        "allowed_title": 1,
+        "ambiguous_title": 8,
+        "accepted": 9
+      }
+    },
+    {
+      "source": "greenhouse-razorpaysoftwareprivatelimited",
+      "saved": 12,
+      "company": "Razorpay",
+      "new_entry": false,
+      "newly_inserted": 12,
+      "pre_filter": {
+        "source": "greenhouse-razorpaysoftwareprivatelimited",
+        "fetched": 22,
+        "denied_title": 7,
+        "denied_location": 3,
+        "allowed_title": 1,
+        "ambiguous_title": 11,
+        "accepted": 12
+      }
+    },
+    {
+      "source": "greenhouse-groww",
+      "saved": 7,
+      "company": "Groww",
+      "new_entry": false,
+      "newly_inserted": 7,
+      "pre_filter": {
+        "source": "greenhouse-groww",
+        "fetched": 7,
+        "denied_title": 0,
+        "denied_location": 0,
+        "allowed_title": 0,
+        "ambiguous_title": 7,
+        "accepted": 7
+      }
+    },
+    {
+      "source": "greenhouse-gleanwork",
+      "saved": 16,
+      "company": "Glean",
+      "new_entry": false,
+      "newly_inserted": 12,
+      "pre_filter": {
+        "source": "greenhouse-gleanwork",
+        "fetched": 118,
+        "denied_title": 57,
+        "denied_location": 45,
+        "allowed_title": 4,
+        "ambiguous_title": 12,
+        "accepted": 16
+      }
+    },
+    {
+      "source": "greenhouse-hackerrank",
+      "saved": 13,
+      "company": "HackerRank",
+      "new_entry": true,
+      "newly_inserted": 13,
+      "pre_filter": {
+        "source": "greenhouse-hackerrank",
+        "fetched": 29,
+        "denied_title": 11,
+        "denied_location": 5,
+        "allowed_title": 2,
+        "ambiguous_title": 11,
+        "accepted": 13
+      }
+    },
+    {
+      "source": "greenhouse-cognite",
+      "saved": 14,
+      "company": "Cognite",
+      "new_entry": true,
+      "newly_inserted": 14,
+      "pre_filter": {
+        "source": "greenhouse-cognite",
+        "fetched": 48,
+        "denied_title": 20,
+        "denied_location": 14,
+        "allowed_title": 5,
+        "ambiguous_title": 9,
+        "accepted": 14
+      }
+    },
+    {
+      "source": "greenhouse-komodohealth",
+      "saved": 8,
+      "company": "Komodo Health",
+      "new_entry": true,
+      "newly_inserted": 8,
+      "pre_filter": {
+        "source": "greenhouse-komodohealth",
+        "fetched": 30,
+        "denied_title": 8,
+        "denied_location": 14,
+        "allowed_title": 2,
+        "ambiguous_title": 6,
+        "accepted": 8
+      }
+    },
+    {
+      "source": "greenhouse-druva",
+      "saved": 13,
+      "company": "Druva",
+      "new_entry": true,
+      "newly_inserted": 13,
+      "pre_filter": {
+        "source": "greenhouse-druva",
+        "fetched": 41,
+        "denied_title": 18,
+        "denied_location": 10,
+        "allowed_title": 8,
+        "ambiguous_title": 5,
+        "accepted": 13
+      }
+    },
+    {
+      "source": "greenhouse-zscaler",
+      "saved": 51,
+      "company": "Zscaler",
+      "new_entry": true,
+      "newly_inserted": 51,
+      "pre_filter": {
+        "source": "greenhouse-zscaler",
+        "fetched": 371,
+        "denied_title": 220,
+        "denied_location": 100,
+        "allowed_title": 19,
+        "ambiguous_title": 32,
+        "accepted": 51
+      }
+    },
+    {
+      "source": "greenhouse-newrelic",
+      "saved": 10,
+      "company": "New Relic",
+      "new_entry": true,
+      "newly_inserted": 10,
+      "pre_filter": {
+        "source": "greenhouse-newrelic",
+        "fetched": 54,
+        "denied_title": 22,
+        "denied_location": 22,
+        "allowed_title": 6,
+        "ambiguous_title": 4,
+        "accepted": 10
+      }
+    },
+    {
+      "source": "greenhouse-rubrik",
+      "saved": 33,
+      "company": "Rubrik",
+      "new_entry": true,
+      "newly_inserted": 33,
+      "pre_filter": {
+        "source": "greenhouse-rubrik",
+        "fetched": 141,
+        "denied_title": 69,
+        "denied_location": 39,
+        "allowed_title": 6,
+        "ambiguous_title": 27,
+        "accepted": 33
+      }
+    },
+    {
+      "source": "greenhouse-amplitude",
+      "saved": 1,
+      "company": "Amplitude",
+      "new_entry": true,
+      "newly_inserted": 1,
+      "pre_filter": {
+        "source": "greenhouse-amplitude",
+        "fetched": 38,
+        "denied_title": 19,
+        "denied_location": 18,
+        "allowed_title": 0,
+        "ambiguous_title": 1,
+        "accepted": 1
+      }
+    },
+    {
+      "source": "greenhouse-launchdarkly",
+      "saved": 4,
+      "company": "LaunchDarkly",
+      "new_entry": true,
+      "newly_inserted": 4,
+      "pre_filter": {
+        "source": "greenhouse-launchdarkly",
+        "fetched": 54,
+        "denied_title": 24,
+        "denied_location": 26,
+        "allowed_title": 0,
+        "ambiguous_title": 4,
+        "accepted": 4
+      }
+    },
+    {
+      "source": "greenhouse-observeai",
+      "saved": 5,
+      "company": "Observe.AI",
+      "new_entry": true,
+      "newly_inserted": 5,
+      "pre_filter": {
+        "source": "greenhouse-observeai",
+        "fetched": 17,
+        "denied_title": 8,
+        "denied_location": 4,
+        "allowed_title": 1,
+        "ambiguous_title": 4,
+        "accepted": 5
+      }
+    },
+    {
+      "source": "greenhouse-zoominfo",
+      "saved": 13,
+      "company": "ZoomInfo",
+      "new_entry": true,
+      "newly_inserted": 13,
+      "pre_filter": {
+        "source": "greenhouse-zoominfo",
+        "fetched": 109,
+        "denied_title": 32,
+        "denied_location": 64,
+        "allowed_title": 6,
+        "ambiguous_title": 7,
+        "accepted": 13
+      }
+    },
+    {
+      "source": "greenhouse-databricks",
+      "saved": 138,
+      "company": "Databricks",
+      "new_entry": true,
+      "newly_inserted": 138,
+      "pre_filter": {
+        "source": "greenhouse-databricks",
+        "fetched": 891,
+        "denied_title": 280,
+        "denied_location": 473,
+        "allowed_title": 48,
+        "ambiguous_title": 90,
+        "accepted": 138
+      }
+    },
+    {
+      "source": "greenhouse-elastic",
+      "saved": 20,
+      "company": "Elastic",
+      "new_entry": true,
+      "newly_inserted": 20,
+      "pre_filter": {
+        "source": "greenhouse-elastic",
+        "fetched": 357,
+        "denied_title": 155,
+        "denied_location": 182,
+        "allowed_title": 2,
+        "ambiguous_title": 18,
+        "accepted": 20
+      }
+    },
+    {
+      "source": "greenhouse-canonical",
+      "saved": 6,
+      "company": "Canonical",
+      "new_entry": true,
+      "newly_inserted": 6,
+      "pre_filter": {
+        "source": "greenhouse-canonical",
+        "fetched": 303,
+        "denied_title": 92,
+        "denied_location": 205,
+        "allowed_title": 0,
+        "ambiguous_title": 6,
+        "accepted": 6
+      }
+    },
+    {
+      "source": "greenhouse-moniepoint",
+      "saved": 23,
+      "company": "Moniepoint Group",
+      "new_entry": true,
+      "newly_inserted": 23,
+      "pre_filter": {
+        "source": "greenhouse-moniepoint",
+        "fetched": 208,
+        "denied_title": 61,
+        "denied_location": 124,
+        "allowed_title": 0,
+        "ambiguous_title": 23,
+        "accepted": 23
+      }
+    },
+    {
+      "source": "greenhouse-yipitdata",
+      "saved": 7,
+      "company": "YipitData",
+      "new_entry": true,
+      "newly_inserted": 7,
+      "pre_filter": {
+        "source": "greenhouse-yipitdata",
+        "fetched": 52,
+        "denied_title": 18,
+        "denied_location": 27,
+        "allowed_title": 2,
+        "ambiguous_title": 5,
+        "accepted": 7
+      }
+    },
+    {
+      "source": "greenhouse-earnin",
+      "saved": 5,
+      "company": "EarnIn",
+      "new_entry": true,
+      "newly_inserted": 5,
+      "pre_filter": {
+        "source": "greenhouse-earnin",
+        "fetched": 22,
+        "denied_title": 4,
+        "denied_location": 13,
+        "allowed_title": 0,
+        "ambiguous_title": 5,
+        "accepted": 5
+      }
+    },
+    {
+      "source": "greenhouse-coinbase",
+      "saved": 22,
+      "company": "Coinbase",
+      "new_entry": true,
+      "newly_inserted": 22,
+      "pre_filter": {
+        "source": "greenhouse-coinbase",
+        "fetched": 218,
+        "denied_title": 64,
+        "denied_location": 132,
+        "allowed_title": 4,
+        "ambiguous_title": 18,
+        "accepted": 22
+      }
+    },
+    {
+      "source": "greenhouse-blinkhealth",
+      "saved": 8,
+      "company": "Blink Health",
+      "new_entry": true,
+      "newly_inserted": 8,
+      "pre_filter": {
+        "source": "greenhouse-blinkhealth",
+        "fetched": 75,
+        "denied_title": 13,
+        "denied_location": 54,
+        "allowed_title": 2,
+        "ambiguous_title": 6,
+        "accepted": 8
+      }
+    },
+    {
+      "source": "greenhouse-instawork",
+      "saved": 23,
+      "company": "Instawork",
+      "new_entry": true,
+      "newly_inserted": 23,
+      "pre_filter": {
+        "source": "greenhouse-instawork",
+        "fetched": 54,
+        "denied_title": 18,
+        "denied_location": 13,
+        "allowed_title": 2,
+        "ambiguous_title": 21,
+        "accepted": 23
+      }
+    },
+    {
+      "source": "greenhouse-airbnb",
+      "saved": 13,
+      "company": "Airbnb",
+      "new_entry": true,
+      "newly_inserted": 13,
+      "pre_filter": {
+        "source": "greenhouse-airbnb",
+        "fetched": 164,
+        "denied_title": 20,
+        "denied_location": 131,
+        "allowed_title": 2,
+        "ambiguous_title": 11,
+        "accepted": 13
+      }
+    },
+    {
+      "source": "greenhouse-gitlab",
+      "saved": 45,
+      "company": "GitLab",
+      "new_entry": true,
+      "newly_inserted": 45,
+      "pre_filter": {
+        "source": "greenhouse-gitlab",
+        "fetched": 228,
+        "denied_title": 120,
+        "denied_location": 63,
+        "allowed_title": 7,
+        "ambiguous_title": 38,
+        "accepted": 45
+      }
+    },
+    {
+      "source": "greenhouse-anthropic",
+      "saved": 40,
+      "company": "Anthropic",
+      "new_entry": true,
+      "newly_inserted": 40,
+      "pre_filter": {
+        "source": "greenhouse-anthropic",
+        "fetched": 596,
+        "denied_title": 212,
+        "denied_location": 344,
+        "allowed_title": 8,
+        "ambiguous_title": 32,
+        "accepted": 40
+      }
+    },
+    {
+      "source": "greenhouse-xai",
+      "saved": 5,
+      "company": "xAI",
+      "new_entry": true,
+      "newly_inserted": 5,
+      "pre_filter": {
+        "source": "greenhouse-xai",
+        "fetched": 254,
+        "denied_title": 48,
+        "denied_location": 201,
+        "allowed_title": 1,
+        "ambiguous_title": 4,
+        "accepted": 5
+      }
+    },
+    {
+      "source": "greenhouse-inflectionai",
+      "saved": 0,
+      "company": "Inflection AI",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "greenhouse-inflectionai",
+        "fetched": 6,
+        "denied_title": 1,
+        "denied_location": 5,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "greenhouse-stabilityai",
+      "saved": 0,
+      "company": "Stability AI",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "greenhouse-stabilityai",
+        "fetched": 7,
+        "denied_title": 1,
+        "denied_location": 6,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "greenhouse-heygen",
+      "saved": 1,
+      "company": "HeyGen",
+      "new_entry": true,
+      "newly_inserted": 1,
+      "pre_filter": {
+        "source": "greenhouse-heygen",
+        "fetched": 17,
+        "denied_title": 10,
+        "denied_location": 6,
+        "allowed_title": 0,
+        "ambiguous_title": 1,
+        "accepted": 1
+      }
+    },
+    {
+      "source": "greenhouse-scaleai",
+      "saved": 32,
+      "company": "Scale AI",
+      "new_entry": true,
+      "newly_inserted": 32,
+      "pre_filter": {
+        "source": "greenhouse-scaleai",
+        "fetched": 223,
+        "denied_title": 46,
+        "denied_location": 145,
+        "allowed_title": 11,
+        "ambiguous_title": 21,
+        "accepted": 32
+      }
+    },
+    {
+      "source": "greenhouse-coreweave",
+      "saved": 5,
+      "company": "CoreWeave",
+      "new_entry": true,
+      "newly_inserted": 5,
+      "pre_filter": {
+        "source": "greenhouse-coreweave",
+        "fetched": 295,
+        "denied_title": 85,
+        "denied_location": 205,
+        "allowed_title": 2,
+        "ambiguous_title": 3,
+        "accepted": 5
+      }
+    },
+    {
+      "source": "smartrecruiters-PHONEPELIMITED",
+      "saved": 38,
+      "company": "PhonePe",
+      "new_entry": false,
+      "newly_inserted": 37,
+      "pre_filter": {
+        "source": "smartrecruiters-PHONEPELIMITED",
+        "fetched": 57,
+        "denied_title": 19,
+        "denied_location": 0,
+        "allowed_title": 1,
+        "ambiguous_title": 37,
+        "accepted": 38
+      }
+    },
+    {
+      "source": "smartrecruiters-Zomato1",
+      "saved": 0,
+      "company": "Zomato",
+      "new_entry": false,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "smartrecruiters-Zomato1",
+        "fetched": 3,
+        "denied_title": 1,
+        "denied_location": 2,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "smartrecruiters-freshworks",
+      "saved": 38,
+      "company": "Freshworks",
+      "new_entry": true,
+      "newly_inserted": 38,
+      "pre_filter": {
+        "source": "smartrecruiters-freshworks",
+        "fetched": 139,
+        "denied_title": 55,
+        "denied_location": 46,
+        "allowed_title": 6,
+        "ambiguous_title": 32,
+        "accepted": 38
+      }
+    },
+    {
+      "source": "smartrecruiters-swiggy",
+      "saved": 21,
+      "company": "Swiggy",
+      "new_entry": true,
+      "newly_inserted": 21,
+      "pre_filter": {
+        "source": "smartrecruiters-swiggy",
+        "fetched": 71,
+        "denied_title": 49,
+        "denied_location": 1,
+        "allowed_title": 0,
+        "ambiguous_title": 21,
+        "accepted": 21
+      }
+    },
+    {
+      "source": "smartrecruiters-servicenow",
+      "saved": 69,
+      "company": "ServiceNow",
+      "new_entry": true,
+      "newly_inserted": 69,
+      "pre_filter": {
+        "source": "smartrecruiters-servicenow",
+        "fetched": 629,
+        "denied_title": 239,
+        "denied_location": 321,
+        "allowed_title": 14,
+        "ambiguous_title": 55,
+        "accepted": 69
+      }
+    },
+    {
+      "source": "smartrecruiters-refyne",
+      "saved": 5,
+      "company": "Refyne",
+      "new_entry": true,
+      "newly_inserted": 5,
+      "pre_filter": {
+        "source": "smartrecruiters-refyne",
+        "fetched": 10,
+        "denied_title": 5,
+        "denied_location": 0,
+        "allowed_title": 0,
+        "ambiguous_title": 5,
+        "accepted": 5
+      }
+    },
+    {
+      "source": "smartrecruiters-upstox",
+      "saved": 1,
+      "company": "Upstox",
+      "new_entry": true,
+      "newly_inserted": 1,
+      "pre_filter": {
+        "source": "smartrecruiters-upstox",
+        "fetched": 1,
+        "denied_title": 0,
+        "denied_location": 0,
+        "allowed_title": 0,
+        "ambiguous_title": 1,
+        "accepted": 1
+      }
+    },
+    {
+      "source": "lever-cred",
+      "saved": 8,
+      "company": "CRED",
+      "new_entry": false,
+      "newly_inserted": 8,
+      "pre_filter": {
+        "source": "lever-cred",
+        "fetched": 11,
+        "denied_title": 2,
+        "denied_location": 1,
+        "allowed_title": 0,
+        "ambiguous_title": 8,
+        "accepted": 8
+      }
+    },
+    {
+      "source": "lever-meesho",
+      "saved": 29,
+      "company": "Meesho",
+      "new_entry": false,
+      "newly_inserted": 28,
+      "pre_filter": {
+        "source": "lever-meesho",
+        "fetched": 50,
+        "denied_title": 21,
+        "denied_location": 0,
+        "allowed_title": 1,
+        "ambiguous_title": 28,
+        "accepted": 29
+      }
+    },
+    {
+      "source": "lever-acceldata",
+      "saved": 15,
+      "company": "Acceldata",
+      "new_entry": true,
+      "newly_inserted": 15,
+      "pre_filter": {
+        "source": "lever-acceldata",
+        "fetched": 46,
+        "denied_title": 19,
+        "denied_location": 12,
+        "allowed_title": 5,
+        "ambiguous_title": 10,
+        "accepted": 15
+      }
+    },
+    {
+      "source": "lever-palantir",
+      "saved": 34,
+      "company": "Palantir Technologies",
+      "new_entry": true,
+      "newly_inserted": 34,
+      "pre_filter": {
+        "source": "lever-palantir",
+        "fetched": 311,
+        "denied_title": 99,
+        "denied_location": 178,
+        "allowed_title": 17,
+        "ambiguous_title": 17,
+        "accepted": 34
+      }
+    },
+    {
+      "source": "lever-paytm",
+      "saved": 129,
+      "company": "Paytm",
+      "new_entry": true,
+      "newly_inserted": 129,
+      "pre_filter": {
+        "source": "lever-paytm",
+        "fetched": 210,
+        "denied_title": 61,
+        "denied_location": 20,
+        "allowed_title": 1,
+        "ambiguous_title": 128,
+        "accepted": 129
+      }
+    },
+    {
+      "source": "lever-spotify",
+      "saved": 20,
+      "company": "Spotify",
+      "new_entry": true,
+      "newly_inserted": 20,
+      "pre_filter": {
+        "source": "lever-spotify",
+        "fetched": 72,
+        "denied_title": 17,
+        "denied_location": 35,
+        "allowed_title": 3,
+        "ambiguous_title": 17,
+        "accepted": 20
+      }
+    },
+    {
+      "source": "ashby-uipath",
+      "saved": 10,
+      "company": "UiPath",
+      "new_entry": true,
+      "newly_inserted": 10,
+      "pre_filter": {
+        "source": "ashby-uipath",
+        "fetched": 109,
+        "denied_title": 53,
+        "denied_location": 46,
+        "allowed_title": 3,
+        "ambiguous_title": 7,
+        "accepted": 10
+      }
+    },
+    {
+      "source": "ashby-tekion",
+      "saved": 73,
+      "company": "Tekion",
+      "new_entry": true,
+      "newly_inserted": 73,
+      "pre_filter": {
+        "source": "ashby-tekion",
+        "fetched": 110,
+        "denied_title": 20,
+        "denied_location": 17,
+        "allowed_title": 19,
+        "ambiguous_title": 54,
+        "accepted": 73
+      }
+    },
+    {
+      "source": "ashby-harvey",
+      "saved": 7,
+      "company": "Harvey",
+      "new_entry": true,
+      "newly_inserted": 7,
+      "pre_filter": {
+        "source": "ashby-harvey",
+        "fetched": 325,
+        "denied_title": 183,
+        "denied_location": 135,
+        "allowed_title": 0,
+        "ambiguous_title": 7,
+        "accepted": 7
+      }
+    },
+    {
+      "source": "ashby-temporal",
+      "saved": 4,
+      "company": "Temporal",
+      "new_entry": true,
+      "newly_inserted": 4,
+      "pre_filter": {
+        "source": "ashby-temporal",
+        "fetched": 70,
+        "denied_title": 23,
+        "denied_location": 43,
+        "allowed_title": 0,
+        "ambiguous_title": 4,
+        "accepted": 4
+      }
+    },
+    {
+      "source": "ashby-confluent",
+      "saved": 0,
+      "company": "Confluent",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-confluent",
+        "fetched": 21,
+        "denied_title": 5,
+        "denied_location": 16,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-spotdraft",
+      "saved": 6,
+      "company": "SpotDraft",
+      "new_entry": true,
+      "newly_inserted": 6,
+      "pre_filter": {
+        "source": "ashby-spotdraft",
+        "fetched": 13,
+        "denied_title": 7,
+        "denied_location": 0,
+        "allowed_title": 0,
+        "ambiguous_title": 6,
+        "accepted": 6
+      }
+    },
+    {
+      "source": "ashby-snowflake",
+      "saved": 29,
+      "company": "Snowflake",
+      "new_entry": true,
+      "newly_inserted": 29,
+      "pre_filter": {
+        "source": "ashby-snowflake",
+        "fetched": 368,
+        "denied_title": 119,
+        "denied_location": 220,
+        "allowed_title": 0,
+        "ambiguous_title": 29,
+        "accepted": 29
+      }
+    },
+    {
+      "source": "ashby-writer",
+      "saved": 11,
+      "company": "Writer",
+      "new_entry": true,
+      "newly_inserted": 11,
+      "pre_filter": {
+        "source": "ashby-writer",
+        "fetched": 49,
+        "denied_title": 17,
+        "denied_location": 21,
+        "allowed_title": 3,
+        "ambiguous_title": 8,
+        "accepted": 11
+      }
+    },
+    {
+      "source": "ashby-abridge",
+      "saved": 0,
+      "company": "Abridge",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-abridge",
+        "fetched": 40,
+        "denied_title": 11,
+        "denied_location": 29,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-decagon",
+      "saved": 14,
+      "company": "Decagon",
+      "new_entry": true,
+      "newly_inserted": 14,
+      "pre_filter": {
+        "source": "ashby-decagon",
+        "fetched": 140,
+        "denied_title": 36,
+        "denied_location": 90,
+        "allowed_title": 1,
+        "ambiguous_title": 13,
+        "accepted": 14
+      }
+    },
+    {
+      "source": "ashby-cursor",
+      "saved": 15,
+      "company": "Anysphere (Cursor)",
+      "new_entry": true,
+      "newly_inserted": 15,
+      "pre_filter": {
+        "source": "ashby-cursor",
+        "fetched": 127,
+        "denied_title": 48,
+        "denied_location": 64,
+        "allowed_title": 2,
+        "ambiguous_title": 13,
+        "accepted": 15
+      }
+    },
+    {
+      "source": "ashby-cognition",
+      "saved": 16,
+      "company": "Cognition AI",
+      "new_entry": true,
+      "newly_inserted": 16,
+      "pre_filter": {
+        "source": "ashby-cognition",
+        "fetched": 94,
+        "denied_title": 24,
+        "denied_location": 54,
+        "allowed_title": 2,
+        "ambiguous_title": 14,
+        "accepted": 16
+      }
+    },
+    {
+      "source": "ashby-poolside",
+      "saved": 9,
+      "company": "Poolside AI",
+      "new_entry": true,
+      "newly_inserted": 9,
+      "pre_filter": {
+        "source": "ashby-poolside",
+        "fetched": 13,
+        "denied_title": 2,
+        "denied_location": 2,
+        "allowed_title": 0,
+        "ambiguous_title": 9,
+        "accepted": 9
+      }
+    },
+    {
+      "source": "ashby-replit",
+      "saved": 3,
+      "company": "Replit",
+      "new_entry": true,
+      "newly_inserted": 3,
+      "pre_filter": {
+        "source": "ashby-replit",
+        "fetched": 76,
+        "denied_title": 26,
+        "denied_location": 47,
+        "allowed_title": 0,
+        "ambiguous_title": 3,
+        "accepted": 3
+      }
+    },
+    {
+      "source": "ashby-langchain",
+      "saved": 6,
+      "company": "LangChain",
+      "new_entry": true,
+      "newly_inserted": 6,
+      "pre_filter": {
+        "source": "ashby-langchain",
+        "fetched": 108,
+        "denied_title": 45,
+        "denied_location": 57,
+        "allowed_title": 0,
+        "ambiguous_title": 6,
+        "accepted": 6
+      }
+    },
+    {
+      "source": "ashby-fireworks",
+      "saved": 7,
+      "company": "Fireworks AI",
+      "new_entry": true,
+      "newly_inserted": 7,
+      "pre_filter": {
+        "source": "ashby-fireworks",
+        "fetched": 74,
+        "denied_title": 31,
+        "denied_location": 36,
+        "allowed_title": 0,
+        "ambiguous_title": 7,
+        "accepted": 7
+      }
+    },
+    {
+      "source": "ashby-openai",
+      "saved": 59,
+      "company": "OpenAI",
+      "new_entry": true,
+      "newly_inserted": 59,
+      "pre_filter": {
+        "source": "ashby-openai",
+        "fetched": 794,
+        "denied_title": 193,
+        "denied_location": 542,
+        "allowed_title": 14,
+        "ambiguous_title": 45,
+        "accepted": 59
+      }
+    },
+    {
+      "source": "ashby-cohere",
+      "saved": 41,
+      "company": "Cohere",
+      "new_entry": true,
+      "newly_inserted": 41,
+      "pre_filter": {
+        "source": "ashby-cohere",
+        "fetched": 145,
+        "denied_title": 62,
+        "denied_location": 42,
+        "allowed_title": 9,
+        "ambiguous_title": 32,
+        "accepted": 41
+      }
+    },
+    {
+      "source": "ashby-moonshot-ai",
+      "saved": 0,
+      "company": "Moonshot AI",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-moonshot-ai",
+        "fetched": 4,
+        "denied_title": 2,
+        "denied_location": 2,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-reka",
+      "saved": 5,
+      "company": "Reka AI",
+      "new_entry": true,
+      "newly_inserted": 5,
+      "pre_filter": {
+        "source": "ashby-reka",
+        "fetched": 9,
+        "denied_title": 1,
+        "denied_location": 3,
+        "allowed_title": 0,
+        "ambiguous_title": 5,
+        "accepted": 5
+      }
+    },
+    {
+      "source": "ashby-liquid-ai",
+      "saved": 0,
+      "company": "Liquid AI",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-liquid-ai",
+        "fetched": 19,
+        "denied_title": 3,
+        "denied_location": 16,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-runway",
+      "saved": 0,
+      "company": "Runway",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-runway",
+        "fetched": 4,
+        "denied_title": 1,
+        "denied_location": 3,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-midjourney",
+      "saved": 0,
+      "company": "Midjourney",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-midjourney",
+        "fetched": 16,
+        "denied_title": 2,
+        "denied_location": 14,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-elevenlabs",
+      "saved": 67,
+      "company": "ElevenLabs",
+      "new_entry": true,
+      "newly_inserted": 67,
+      "pre_filter": {
+        "source": "ashby-elevenlabs",
+        "fetched": 246,
+        "denied_title": 95,
+        "denied_location": 84,
+        "allowed_title": 6,
+        "ambiguous_title": 61,
+        "accepted": 67
+      }
+    },
+    {
+      "source": "ashby-black-forest-labs",
+      "saved": 1,
+      "company": "Black Forest Labs",
+      "new_entry": true,
+      "newly_inserted": 1,
+      "pre_filter": {
+        "source": "ashby-black-forest-labs",
+        "fetched": 15,
+        "denied_title": 6,
+        "denied_location": 8,
+        "allowed_title": 0,
+        "ambiguous_title": 1,
+        "accepted": 1
+      }
+    },
+    {
+      "source": "ashby-lumaai",
+      "saved": 2,
+      "company": "Luma AI",
+      "new_entry": true,
+      "newly_inserted": 2,
+      "pre_filter": {
+        "source": "ashby-lumaai",
+        "fetched": 44,
+        "denied_title": 17,
+        "denied_location": 25,
+        "allowed_title": 1,
+        "ambiguous_title": 1,
+        "accepted": 2
+      }
+    },
+    {
+      "source": "ashby-openrouter",
+      "saved": 0,
+      "company": "OpenRouter",
+      "new_entry": true,
+      "newly_inserted": 0,
+      "pre_filter": {
+        "source": "ashby-openrouter",
+        "fetched": 25,
+        "denied_title": 8,
+        "denied_location": 17,
+        "allowed_title": 0,
+        "ambiguous_title": 0,
+        "accepted": 0
+      }
+    },
+    {
+      "source": "ashby-perplexity",
+      "saved": 9,
+      "company": "Perplexity AI",
+      "new_entry": true,
+      "newly_inserted": 9,
+      "pre_filter": {
+        "source": "ashby-perplexity",
+        "fetched": 115,
+        "denied_title": 45,
+        "denied_location": 61,
+        "allowed_title": 1,
+        "ambiguous_title": 8,
+        "accepted": 9
+      }
+    }
+  ],
+  "validation_runs": 2,
+  "ranking_retries": [
+    {
+      "id": 663,
+      "title": "Sr. Solutions Architect",
+      "source": "greenhouse-databricks",
+      "success": true,
+      "score": 2
+    },
+    {
+      "id": 664,
+      "title": "Sr. Solutions Architect",
+      "source": "greenhouse-databricks",
+      "success": true,
+      "score": 2
+    },
+    {
+      "id": 666,
+      "title": "Sr. Solutions Engineer",
+      "source": "greenhouse-databricks",
+      "success": true,
+      "score": 2
+    }
+  ],
+  "unresolved_ranking_failures": 0,
+  "new_scraper_unexpected_normalized_locations": [],
+  "corrected_first_run_rows": [
+    {
+      "id": 1048,
+      "title": "Sr Enterprise Account Exec Retail ",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1051,
+      "title": "Sr Enterprise Account Exec",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1053,
+      "title": "Sr Enterprise Account Exec -Defence ",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1069,
+      "title": "Sr Enterprise Account Exec, FSI",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1070,
+      "title": "Sr Enterprise Account Exec - Utilities",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1078,
+      "title": "Sr Enterprise Account Exec Secure Government. ",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1112,
+      "title": "Sr Enterprise Account Exec - Secure Government ",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1118,
+      "title": "Sr Enterprise Account Exec",
+      "source": "smartrecruiters-servicenow"
+    },
+    {
+      "id": 1119,
+      "title": "Sr Enterprise Account Exec 6 months - Ministry of Defence ",
+      "source": "smartrecruiters-servicenow"
+    }
+  ],
+  "note": "New-row counts compare final persisted rows with the pre-session database snapshot. Saved counts are writes from the final run, including updates. Ambiguous titles use the existing per-job LLM ranker. Location eligibility uses raw ATS metadata; the LLM can return null for multi-country postings. The accepted pre-filter ADRs were not previously implemented; this batch adds the code gate to the four ATS parsers. Greenhouse Perplexity was removed from the active registry after repeated HTTP 404 responses; only the working Ashby slug perplexity remains configured.",
+  "retired_greenhouse_perplexity_entry": {
+    "company": "Perplexity AI",
+    "source": "greenhouse-perplexityai",
+    "reason": "Greenhouse fetch failed for Perplexity AI: all three endpoints failed"
+  },
+  "historical_scraper_failures_removed": [
+    {
+      "source": "greenhouse-perplexityai",
+      "saved": 0,
+      "error": "Greenhouse fetch failed for Perplexity AI: all three endpoints failed"
+    }
+  ]
+}

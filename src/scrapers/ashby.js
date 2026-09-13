@@ -1,4 +1,5 @@
 import { BaseScraper } from './base-scraper.js';
+import { preFilterJobs, countryName } from './pre-filter.js';
 
 function cleanHtml(raw = '') {
   return raw
@@ -34,9 +35,13 @@ export class AshbyScraper extends BaseScraper {
    * @returns {Promise<object>} Ashby API response.
    */
   async scrape() {
-    const response = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${this.slug}`);
+    const response = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(this.slug)}`, {
+      signal: AbortSignal.timeout(30000),
+    });
     if (!response.ok) throw new Error(`Ashby fetch failed for ${this.company}: ${response.status}`);
-    return response.json();
+    const data = await response.json();
+    if (!Array.isArray(data?.jobs)) throw new Error(`Ashby response for ${this.company} is missing its jobs array`);
+    return data;
   }
 
   /**
@@ -45,25 +50,19 @@ export class AshbyScraper extends BaseScraper {
    * @returns {Array<object>} Frontend-relevant normalized jobs.
    */
   parseJobs(response) {
-    const relevantTerms = ['frontend', 'front-end', 'react', 'ui engineer', 'sde', 'software development engineer', 'software engineer', 'member of technical staff', 'mts', 'web engineer', 'full stack', 'fullstack'];
-    const excludedTerms = ['backend', 'devops', 'infrastructure', 'ios', 'android', 'qa', 'data scientist', 'data engineer', 'security', 'finance', 'hr', 'legal', 'sales', 'marketing'];
-
-    return (response?.jobPostings ?? [])
-      .filter((job) => {
-        const title = String(job.title ?? '').toLowerCase();
-        return relevantTerms.some((term) => title.includes(term))
-          && !excludedTerms.some((term) => title.includes(term));
-      })
+    return preFilterJobs((response?.jobs ?? [])
       .map((job) => ({
         job_id: job.id,
         title: job.title,
         company: this.company,
-        location: job.location ?? 'India',
+        location: [job.location, countryName(job.address?.postalAddress?.addressCountry),
+          ...(job.secondaryLocations ?? []).flatMap((location) => [location.location, countryName(location.address?.postalAddress?.addressCountry)])]
+          .filter(Boolean).join('; ') || null,
         job_type: job.employmentType ?? 'Full-time',
         description: cleanHtml((job.descriptionPlain ?? job.descriptionHtml ?? '').slice(0, 2000)),
-        apply_url: job.jobUrl,
+        apply_url: job.applyUrl ?? job.jobUrl,
         source: `ashby-${this.slug}`,
         posted_at: job.publishedAt ?? null,
-      }));
+      })), this);
   }
 }

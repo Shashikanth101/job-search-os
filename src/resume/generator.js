@@ -79,8 +79,6 @@ export async function generateResume({ jobTitle, company, jobDescription, jobId 
     .replace('{{BULLET_POOL_CONTEXT}}', BULLET_POOL_CONTEXT);
   const response = await resumeChat(systemPrompt, `Tailor this resume for the following job description:\n\n${jobDescription}`);
   const cleanedResponse = response.replace(/```json|```/gi, '').trim();
-  console.log(`[Resume Debug] Raw LLM response: ${cleanedResponse.slice(0, 500)}`);
-  console.log(`[Resume Debug] Response length: ${cleanedResponse.length}`);
   const parsed = JSON.parse(cleanedResponse);
   const livspaceBullets = getSelectedBulletTexts(parsed.livspace_bullet_ids, LIVSPACE_BULLETS);
   const startusBullets = getSelectedBulletTexts(parsed.startus_bullet_ids, STARTUS_BULLETS);

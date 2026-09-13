@@ -1,4 +1,5 @@
 import { BaseScraper } from './base-scraper.js';
+import { preFilterJobs } from './pre-filter.js';
 
 /**
  * Scraper for a company's public Lever job board.
@@ -32,15 +33,7 @@ export class LeverScraper extends BaseScraper {
    * @returns {Array<object>} Frontend-relevant normalized jobs.
    */
   parseJobs(postings) {
-    const relevantTerms = ['frontend', 'front-end', 'react', 'ui engineer', 'sde', 'software development engineer', 'software engineer', 'member of technical staff', 'mts', 'web engineer', 'full stack', 'fullstack'];
-    return (postings ?? [])
-      .filter((posting) => {
-        const searchableText = [posting.text, posting.categories?.team]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return relevantTerms.some((term) => searchableText.includes(term));
-      })
+    return preFilterJobs((postings ?? [])
       .map((posting) => ({
         job_id: posting.id,
         title: posting.text,
@@ -60,6 +53,6 @@ export class LeverScraper extends BaseScraper {
         apply_url: posting.applyUrl ?? posting.hostedUrl,
         source: `lever-${this.slug}`,
         posted_at: new Date(posting.createdAt).toISOString(),
-      }));
+      })), this);
   }
 }
