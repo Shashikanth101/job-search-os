@@ -18,6 +18,7 @@ import { useManualLinks } from './hooks/useManualLinks';
 import { useOutreach } from './hooks/useOutreach';
 import { useApplicationActions } from './hooks/useApplicationActions';
 import { useClipboardCopy } from './hooks/useClipboardCopy';
+import { useResumeGeneration } from './hooks/useResumeGeneration';
 
 const APPLICATION_STATUSES = ['saved', 'applied', 'interviewing', 'rejected', 'offer', 'followed_up'];
 
@@ -51,6 +52,7 @@ export function App() {
     markFollowedUp,
   } = useApplicationActions({ setJobs, refetchStats, refetchJobs });
   const { copiedKey: copiedTemplate, copy: copyTemplate, error: clipboardError } = useClipboardCopy();
+  const { generatingJobId, errorsByJobId, generateResume } = useResumeGeneration({ setJobs });
 
   const loading = jobsLoading || manualLinksLoading || statsLoading || outreachLoading;
   const error = jobsError || manualLinksError || statsError || outreachError || actionsError || clipboardError;
@@ -158,6 +160,9 @@ export function App() {
             applicationStatuses={APPLICATION_STATUSES}
             onStatusChange={changeApplicationStatus}
             onSaveDetails={saveApplicationDetails}
+            generatingResumeJobId={generatingJobId}
+            resumeErrors={errorsByJobId}
+            onGenerateResume={generateResume}
           />
         )}
 

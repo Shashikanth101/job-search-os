@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 ## Current Phase
-Phase 2 COMPLETE — Moving to Phase 3 (Outreach Engine)
+Phase 2 COMPLETE — Phase 3 in progress (Outreach Engine)
 
 ## What's Built and Working
 - [x] SQLite DB with jobs/applications/outreach schema
@@ -61,19 +61,31 @@ Phase 2 COMPLETE — Moving to Phase 3 (Outreach Engine)
 - [x] Message template store
 - [x] Follow-up reminder system
 - [x] Manual application entry form in dashboard
-- [ ] Google Sheets sync (optional)
+- [x] Manual jobs remain visible with ranking and India-only feed filters
+- [x] Prevent duplicate job URLs with a database UNIQUE constraint and manual API conflict response
+- [x] Manual job type and location fields; persist and display both values
+- [x] Normalize scraped-job locations through the existing ranking LLM call
+- [x] Verified URL uniqueness constraint and duplicate rejection on the live database
+
+## What's Left (Phase 3 Remaining)
+- [ ] Add real LinkedIn company slugs to `src/config/linkedin-outreach.js`
+- [ ] Wire "Save Resume" button to `POST /api/resume/generate`
+- [ ] Remove `[Resume Debug]` logs from `src/resume/generator.js`
 
 ## Known Issues
 - Swiggy careers page currently shows no jobs
 - Node 24 incompatible with better-sqlite3 — use Node 20 LTS via nvm.
-- Remove Resume Debug logs before production use
-- Dashboard Save Resume button still shows Coming Soon — needs wiring to POST /api/resume/generate
 
 ## Architecture Decisions (Don't Revisit)
 - Model-agnostic LLM client — no provider SDKs
 - Generic ATS scrapers over per-company scrapers
 - SQLite over Postgres — local tool, no infra needed
 - pdflatex over JS PDF libs — reliability over portability
+
+## Recent Fixes
+- Fixed LLM configuration resolution: removed ranker environment-prefix doubling and prevented provider base URLs from being overridden by a stray generic base URL.
+- Fixed React SyntheticEvent lifetime issue by capturing the manual form element before asynchronous work, then resetting it through the captured reference.
+- Fixed manual-job visibility, URL deduplication, and location/job-type handling. Six duplicate job rows and their orphaned application records were manually cleaned up via direct SQL; the migration then added the live `jobs.apply_url` UNIQUE constraint. Scraped-job locations now normalize through the ranking LLM call.
 
 ## How To Start a New Codex Session
 1. Read AGENTS.md

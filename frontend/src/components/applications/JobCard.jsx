@@ -9,8 +9,11 @@ import { ApplicationDetailsForm } from './ApplicationDetailsForm';
  * @param {string[]} props.applicationStatuses
  * @param {(status: string) => void} props.onStatusChange
  * @param {(event: import('react').FormEvent<HTMLFormElement>) => void} props.onSaveDetails
+ * @param {boolean} props.generatingResume
+ * @param {string} props.resumeError
+ * @param {() => Promise<boolean>} props.onGenerateResume
  */
-export function JobCard({ job, updatingApplicationId, applicationStatuses, onStatusChange, onSaveDetails }) {
+export function JobCard({ job, updatingApplicationId, applicationStatuses, onStatusChange, onSaveDetails, generatingResume, resumeError, onGenerateResume }) {
   const isUpdating = updatingApplicationId === job.id;
 
   return (
@@ -53,6 +56,28 @@ export function JobCard({ job, updatingApplicationId, applicationStatuses, onSta
               </select>
             </label>
             <ApplicationDetailsForm job={job} isUpdating={isUpdating} onSave={onSaveDetails} />
+            {job.resume_path ? (
+              <a
+                className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                href={`/api/jobs/${job.id}/resume`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View Resume
+              </a>
+            ) : (
+              <div>
+                <button
+                  className="inline-flex min-h-10 items-center rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-wait disabled:opacity-60"
+                  type="button"
+                  onClick={onGenerateResume}
+                  disabled={generatingResume}
+                >
+                  {generatingResume ? 'Generating…' : 'Save Resume'}
+                </button>
+                {resumeError && <p className="mt-2 text-sm text-red-700" role="alert">{resumeError}</p>}
+              </div>
+            )}
           </div>
         </div>
       </div>

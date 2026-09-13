@@ -32,11 +32,11 @@ export function migrateJobConstraints(db) {
           CHECK (job_type IN ('full-time', 'part-time', 'contract', 'internship')),
         description TEXT, apply_url TEXT, source TEXT,
         found_at DATETIME DEFAULT CURRENT_TIMESTAMP, posted_at DATETIME,
-        relevance_score INTEGER, relevance_reason TEXT, is_new BOOLEAN DEFAULT 1,
+        relevance_score INTEGER, relevance_reason TEXT, resume_path TEXT DEFAULT NULL, is_new BOOLEAN DEFAULT 1,
         UNIQUE(company, job_id)
       );
       INSERT INTO jobs_constrained SELECT id, job_id, title, company, location, 'full-time',
-        description, apply_url, source, found_at, posted_at, relevance_score, relevance_reason, is_new FROM jobs;`);
+        description, apply_url, source, found_at, posted_at, relevance_score, relevance_reason, resume_path, is_new FROM jobs;`);
       const update = db.prepare('UPDATE jobs_constrained SET job_type=? WHERE id=?');
       for (const row of rows) update.run(normalizeJobType(row.job_type), row.id);
       db.exec('DROP TABLE jobs; ALTER TABLE jobs_constrained RENAME TO jobs;');

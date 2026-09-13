@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   posted_at DATETIME,
   relevance_score INTEGER,
   relevance_reason TEXT,
+  resume_path TEXT DEFAULT NULL,
   is_new BOOLEAN DEFAULT 1,
   UNIQUE(company, job_id)
 );

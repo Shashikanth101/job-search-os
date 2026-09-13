@@ -10,8 +10,11 @@ import { LoadingSkeletonCards } from '../ui/LoadingSkeletonCards';
  * @param {string[]} props.applicationStatuses
  * @param {(job: object, status: string) => void} props.onStatusChange
  * @param {(event: import('react').FormEvent<HTMLFormElement>, job: object) => void} props.onSaveDetails
+ * @param {(string|number|null)} props.generatingResumeJobId
+ * @param {Record<string, string>} props.resumeErrors
+ * @param {(job: object) => Promise<boolean>} props.onGenerateResume
  */
-export function JobList({ jobs, loading, updatingApplicationId, applicationStatuses, onStatusChange, onSaveDetails }) {
+export function JobList({ jobs, loading, updatingApplicationId, applicationStatuses, onStatusChange, onSaveDetails, generatingResumeJobId, resumeErrors, onGenerateResume }) {
   if (loading) return <LoadingSkeletonCards />;
 
   return (
@@ -27,6 +30,9 @@ export function JobList({ jobs, loading, updatingApplicationId, applicationStatu
               applicationStatuses={applicationStatuses}
               onStatusChange={(status) => onStatusChange(job, status)}
               onSaveDetails={(event) => onSaveDetails(event, job)}
+              generatingResume={generatingResumeJobId === job.id}
+              resumeError={resumeErrors[job.id] || ''}
+              onGenerateResume={() => onGenerateResume(job)}
             />
           ))}
         </div>

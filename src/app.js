@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs/promises';
 import linkedinOutreach from './config/linkedin-outreach.js';
 import manualLinks from './config/manual-links.js';
 import messageTemplates from './config/message-templates.js';
@@ -226,34 +227,50 @@ export function createApp(db) {
   });
 
   /**
-   * Generates and compiles a tailored resume for a job.
+   * Generates a tailored resume for a stored job and saves its absolute PDF path.
    * @param {import('express').Request} req Express request.
    * @param {import('express').Response} res Express response.
    * @returns {Promise<import('express').Response>} JSON response.
    */
   app.post('/api/resume/generate', async (req, res) => {
-    const { jobId, jobTitle, company, jobDescription } = req.body ?? {};
-    if (jobId === undefined || jobId === null || jobId === '' || !jobTitle || !company || !jobDescription) {
-      return res.status(400).json({ success: false, error: 'jobId, jobTitle, company, and jobDescription are required.' });
+    const { jobId } = req.body ?? {};
+    if (jobId === undefined || jobId === null || jobId === '' || !['string', 'number'].includes(typeof jobId)) {
+      return res.status(400).json({ success: false, error: 'jobId is required.' });
     }
 
+    const job = db.prepare('SELECT id, job_id, title, company, description FROM jobs WHERE id = ? OR job_id = ? LIMIT 1').get(jobId, String(jobId));
+    if (!job) return res.status(404).json({ success: false, error: `Job not found: ${jobId}` });
+
     try {
-      const texPath = await generateResume({ jobId, jobTitle, company, jobDescription });
+      const texPath = await generateResume({
+        jobId: job.job_id ?? job.id,
+        jobTitle: job.title,
+        company: job.company,
+        jobDescription: job.description ?? '',
+      });
       const pdfPath = await compileResume(texPath);
-      const job = db.prepare('SELECT id FROM jobs WHERE id = ? OR job_id = ? LIMIT 1').get(jobId, String(jobId));
-
-      if (job) {
-        const application = db.prepare('SELECT id FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(job.id);
-        if (application) {
-          db.prepare('UPDATE applications SET resume_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(pdfPath, application.id);
-        } else {
-          db.prepare('INSERT INTO applications (job_id, resume_path, status) VALUES (?, ?, ?)').run(job.id, pdfPath, 'saved');
-        }
-      }
-
-      return res.json({ success: true, pdfPath, texPath });
+      const pdf = await fs.stat(pdfPath);
+      if (!pdf.isFile()) throw new Error('Resume generation did not produce a PDF file.');
+      db.prepare('UPDATE jobs SET resume_path = ? WHERE id = ?').run(pdfPath, job.id);
+      return res.json({ success: true, resumePath: pdfPath });
     } catch (error) {
-      return res.status(500).json({ success: false, error: error.message });
+      return res.status(500).json({ success: false, error: `Resume generation failed: ${error.message}` });
+    }
+  });
+
+  /** Serves only a PDF path recorded on the requested job. */
+  app.get('/api/jobs/:id/resume', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'Invalid job ID.' });
+    const job = db.prepare('SELECT resume_path FROM jobs WHERE id = ?').get(id);
+    if (!job) return res.status(404).json({ error: 'Job not found.' });
+    if (!job.resume_path) return res.status(404).json({ error: 'No resume has been generated for this job.' });
+    try {
+      const pdf = await fs.stat(job.resume_path);
+      if (!pdf.isFile()) return res.status(404).json({ error: 'The generated resume file is missing.' });
+      return res.sendFile(job.resume_path, { headers: { 'Content-Type': 'application/pdf' } });
+    } catch {
+      return res.status(404).json({ error: 'The generated resume file is missing.' });
     }
   });
 
