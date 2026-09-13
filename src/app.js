@@ -3,6 +3,7 @@ import linkedinOutreach from './config/linkedin-outreach.js';
 import manualLinks from './config/manual-links.js';
 import messageTemplates from './config/message-templates.js';
 import { rankJob } from './ranker/index.js';
+import { JOB_TYPES } from './jobs/fields.js';
 import { serializeJob } from './db.js';
 import { compileResume } from './resume/compiler.js';
 import { generateResume } from './resume/generator.js';
@@ -78,7 +79,7 @@ export function createApp(db) {
     if (req.query.location === 'india') {
       const includedLocations = ['Bangalore', 'Bengaluru', 'Mumbai', 'Pune', 'Hyderabad', 'Gurgaon', 'Gurugram', 'Delhi', 'Noida', 'Chennai', 'Remote'];
       const excludedLocations = ['United States', 'California', 'Texas', 'New York', 'Austin', 'Malaysia', 'Mountain View', 'San Francisco', 'Cupertino'];
-      const locationClauses = [`(${includedLocations.map((location, index) => {
+      const locationClauses = [`(LOWER(location) = 'india' OR ${includedLocations.map((location, index) => {
         params[`includedLocation${index}`] = `%${location.toLowerCase()}%`;
         return `LOWER(location) LIKE @includedLocation${index}`;
       }).join(' OR ')})`];
@@ -110,12 +111,17 @@ export function createApp(db) {
    * @returns {Promise<import('express').Response>} JSON response.
    */
   app.post('/api/jobs/manual', async (req, res) => {
-    const { company, title, jobDescription, applyUrl, location, status = 'saved' } = req.body ?? {};
+    const { company, title, jobDescription, applyUrl, location = 'India', job_type = 'full-time', status = 'saved' } = req.body ?? {};
     if (!company || !title || !jobDescription || !applyUrl) {
       return res.status(400).json({ error: 'company, title, jobDescription, and applyUrl are required.' });
     }
     if (location != null && typeof location !== 'string') {
       return res.status(400).json({ error: 'location must be a string.' });
+    }
+    if (!JOB_TYPES.includes(job_type)) return res.status(400).json({ error: 'Invalid job type.' });
+    if (typeof applyUrl !== 'string') return res.status(400).json({ error: 'applyUrl must be a string.' });
+    if (db.prepare('SELECT id FROM jobs WHERE apply_url = ?').get(applyUrl)) {
+      return res.status(409).json({ error: 'This job is already tracked' });
     }
 
     const applicationInput = getApplicationInput({ status });
@@ -124,10 +130,10 @@ export function createApp(db) {
     try {
       const jobId = `manual-${Date.now()}`;
       const result = db.prepare(`
-        INSERT INTO jobs (job_id, title, company, description, apply_url, location, source)
-        VALUES (?, ?, ?, ?, ?, ?, 'manual')
-      `).run(jobId, title, company, jobDescription, applyUrl, location?.trim() || null);
-      const { score, reason } = await rankJob(title, jobDescription, company);
+        INSERT INTO jobs (job_id, title, company, description, apply_url, location, job_type, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'manual')
+      `).run(jobId, title, company, jobDescription, applyUrl, location?.trim() || null, job_type);
+      const { score, reason } = await rankJob(title, jobDescription, company, location);
       db.prepare('UPDATE jobs SET relevance_score = ?, relevance_reason = ? WHERE id = ?').run(score, reason, result.lastInsertRowid);
       const application = db.prepare(`
         INSERT INTO applications (job_id, applied_at, status)
@@ -136,6 +142,9 @@ export function createApp(db) {
       const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(result.lastInsertRowid);
       return res.status(201).json({ ...serializeJob(job), application_id: application.lastInsertRowid, application_status: status });
     } catch (error) {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' && error.message.includes('jobs.apply_url')) {
+        return res.status(409).json({ error: 'This job is already tracked' });
+      }
       return res.status(500).json({ error: error.message });
     }
   });

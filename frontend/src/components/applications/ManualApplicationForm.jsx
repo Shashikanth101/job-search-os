@@ -1,5 +1,6 @@
 import { FormField } from '../ui/FormField';
 import { Button } from '../ui/Button';
+import { ManualJobFields } from './ManualJobFields';
 
 /**
  * Collapsible "add a lead" form for manually tracked applications.
@@ -9,8 +10,9 @@ import { Button } from '../ui/Button';
  * @param {boolean} props.submitting
  * @param {(event: import('react').FormEvent<HTMLFormElement>) => void} props.onSubmit
  * @param {object|null} props.result - Saved job including its ranking result.
+ * @param {string} props.error - Manual submission failure message.
  */
-export function ManualApplicationForm({ open, onToggle, submitting, onSubmit, result }) {
+export function ManualApplicationForm({ open, onToggle, submitting, onSubmit, result, error }) {
   return (
     <section className="mb-8 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 shadow-sm sm:p-5" aria-labelledby="manual-application-heading">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -22,6 +24,7 @@ export function ManualApplicationForm({ open, onToggle, submitting, onSubmit, re
           {open ? 'Close form' : 'Add manual application'}
         </Button>
       </div>
+      {error && <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
       <div role="status" aria-live="polite" aria-atomic="true">
         {result && (
           <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
@@ -35,7 +38,7 @@ export function ManualApplicationForm({ open, onToggle, submitting, onSubmit, re
           <FormField label="Job title" name="title" required />
           <FormField label="Job description" name="jobDescription" type="textarea" required labelClassName="sm:col-span-2" />
           <FormField label="Apply URL" name="applyUrl" type="url" required />
-          <FormField label="Location (optional, recommended)" name="location" placeholder="e.g. Bangalore or Remote" />
+          <ManualJobFields />
           <div className="flex items-end">
             <Button variant="dark" type="submit" disabled={submitting}>
               {submitting ? 'Saving…' : 'Submit application'}

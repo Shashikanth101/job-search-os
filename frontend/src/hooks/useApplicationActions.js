@@ -9,7 +9,8 @@ import { useState } from 'react';
  * @returns {{
  *   updatingApplicationId: (string|number|null),
  *   error: string,
- *   submitManualApplication: (payload: {company: string, title: string, jobDescription: string, applyUrl: string, location?: string}) => Promise<object|null>,
+ *   manualError: string,
+ *   submitManualApplication: (payload: {company: string, title: string, jobDescription: string, applyUrl: string, location?: string, job_type?: string}) => Promise<object|null>,
  *   saveApplication: (job: object, changes: object) => Promise<object|null>,
  *   changeApplicationStatus: (job: object, status: string) => Promise<object|null>,
  *   markFollowedUp: (reminder: object) => Promise<void>,
@@ -18,9 +19,11 @@ import { useState } from 'react';
 export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
   const [updatingApplicationId, setUpdatingApplicationId] = useState(null);
   const [error, setError] = useState('');
+  const [manualError, setManualError] = useState('');
 
   async function submitManualApplication(payload) {
     setError('');
+    setManualError('');
     try {
       const response = await fetch('/api/jobs/manual', {
         method: 'POST',
@@ -37,7 +40,7 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
       }
       return result;
     } catch (requestError) {
-      setError(requestError.message || 'Could not save the manual application.');
+      setManualError(requestError.message || 'Could not save the manual application.');
       return null;
     }
   }
@@ -100,6 +103,7 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
   }
 
   return {
+    manualError,
     updatingApplicationId,
     error,
     submitManualApplication,

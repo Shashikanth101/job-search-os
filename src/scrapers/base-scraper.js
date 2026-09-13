@@ -1,4 +1,5 @@
 import { rankJob } from '../ranker/index.js';
+import { normalizeJobType } from '../jobs/fields.js';
 
 /**
  * Base contract for every job scraper.
@@ -53,14 +54,20 @@ export class BaseScraper {
         relevance_score = excluded.relevance_score,
         relevance_reason = excluded.relevance_reason
     `);
+    const existingUrl = this.db.prepare('SELECT id, company, job_id, source FROM jobs WHERE apply_url = ?');
+    const existingPosting = this.db.prepare('SELECT id FROM jobs WHERE company = ? AND job_id = ?');
     const saveMany = this.db.transaction((records) => {
+      let saved = 0;
       for (const job of records) {
+        const existing = existingUrl.get(job.apply_url ?? null);
+        if (existing && (existing.source === 'manual'
+          || existing.id !== existingPosting.get(job.company ?? '', job.job_id ?? job.apply_url)?.id)) continue;
         statement.run({
           job_id: job.job_id ?? job.apply_url,
           title: job.title,
           company: job.company ?? '',
           location: job.location ?? null,
-          job_type: job.job_type ?? null,
+          job_type: normalizeJobType(job.job_type) || 'full-time',
           description: job.description ?? '',
           apply_url: job.apply_url ?? null,
           source: job.source ?? this.source,
@@ -68,8 +75,9 @@ export class BaseScraper {
           relevance_score: job.relevance_score == null ? null : Number(job.relevance_score),
           relevance_reason: job.relevance_reason ?? null
         });
+        saved += 1;
       }
-      return records.length;
+      return saved;
     });
     return saveMany(jobs);
   }
@@ -85,8 +93,8 @@ export class BaseScraper {
     const ranked = await Promise.all(
       jobs.map(async (job) => {
         try {
-          const { score, reason } = await rankJob(job.title, job.description, job.company);
-          return { ...job, relevance_score: score, relevance_reason: reason };
+          const { score, reason, location } = await rankJob(job.title, job.description, job.company, job.location);
+          return { ...job, location, relevance_score: score, relevance_reason: reason };
         } catch (error) {
           console.error(`Ranking failed for "${job.title}" at ${job.company}:`, error.message);
           return { ...job, relevance_score: 0, relevance_reason: 'Ranking failed' };

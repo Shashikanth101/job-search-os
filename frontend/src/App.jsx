@@ -44,6 +44,7 @@ export function App() {
   const {
     updatingApplicationId,
     error: actionsError,
+    manualError,
     submitManualApplication: submitManualApplicationRequest,
     saveApplication,
     changeApplicationStatus,
@@ -65,7 +66,8 @@ export function App() {
       title: form.get('title'),
       jobDescription: form.get('jobDescription'),
       applyUrl: form.get('applyUrl'),
-      location: form.get('location'),
+      location: form.get('location') === 'Other' ? form.get('country') : form.get('location'),
+      job_type: form.get('job_type'),
     });
     setManualSubmitting(false);
     if (result) {
@@ -122,6 +124,7 @@ export function App() {
           submitting={manualSubmitting}
           onSubmit={submitManualApplication}
           result={manualResult}
+          error={manualError}
         />
 
         <TabNav activeTab={activeTab} onChange={setActiveTab} />
