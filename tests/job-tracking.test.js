@@ -33,11 +33,12 @@ test('migration refuses duplicates without mutating jobs or application links', 
 test('migration preserves rows, relationships and sequence; enforces unique URL, enum, and default', () => {
   const db = database();
   db.pragma('foreign_keys = ON');
-  db.exec("INSERT INTO jobs (id,title,company,job_type,apply_url) VALUES (10,'A','A','Full Time Employee','url'); INSERT INTO applications(job_id) VALUES(10)");
+  db.exec("INSERT INTO jobs (id,title,company,job_type,apply_url,status) VALUES (10,'A','A','Full Time Employee','url','in_process'); INSERT INTO applications(job_id) VALUES(10)");
   migrateJobConstraints(db);
   migrateJobConstraints(db);
   assert.equal(db.prepare('SELECT job_type FROM jobs WHERE id=10').get().job_type, 'full-time');
   assert.equal(db.prepare('SELECT job_id FROM applications').get().job_id, 10);
+  assert.equal(db.prepare('SELECT status FROM jobs WHERE id=10').get().status, 'in_process');
   assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
   assert.throws(() => db.exec("INSERT INTO jobs(title,company,apply_url) VALUES('B','B','url')"), /UNIQUE constraint failed: jobs.apply_url/);
   assert.throws(() => db.exec("INSERT INTO jobs(title,company,job_type) VALUES('B','B','casual')"), /CHECK constraint/);

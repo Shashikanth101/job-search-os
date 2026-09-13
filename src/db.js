@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { migrateJobResumePath } from './migrations/002-job-resume-path.js';
+import { migrateCoarseJobStatus } from './migrations/003-coarse-job-status.js';
 
 const schemaPath = fileURLToPath(new URL('./schema.sql', import.meta.url));
 
@@ -41,6 +42,7 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH ?? './da
   migrateLegacyJobsTable(database);
   database.exec(fs.readFileSync(schemaPath, 'utf8'));
   migrateJobResumePath(database);
+  migrateCoarseJobStatus(database);
   return database;
 }
 

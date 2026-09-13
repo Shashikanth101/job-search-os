@@ -12,9 +12,17 @@ function getScoreStyle(score) {
 
 /**
  * Relevance score pill shown on a job card.
- * @param {{ score: number|string|null|undefined }} props
+ * @param {{ score: number|string|null|undefined, compact?: boolean }} props
  */
-export function ScoreBadge({ score }) {
+export function ScoreBadge({ score, compact = false }) {
+  if (compact) {
+    return (
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset ${getScoreStyle(Number(score))}`}>
+        {score ?? '—'}
+      </span>
+    );
+  }
+
   return (
     <div className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl ring-1 ring-inset ${getScoreStyle(Number(score))}`}>
       <span className="text-2xl font-bold leading-none">{score ?? '—'}</span>

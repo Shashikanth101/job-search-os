@@ -4,14 +4,14 @@ import { useState } from 'react';
  * Generates and opens stored resumes through the app API.
  * @param {object} deps
  * @param {(updater: (jobs: object[]) => object[]) => void} deps.setJobs
- * @returns {{generatingJobId: (string|number|null), errorsByJobId: Record<string, string>, generateResume: (job: object) => Promise<boolean>}}
+ * @returns {{generatingJobIds: Set<string|number>, errorsByJobId: Record<string, string>, generateResume: (job: object) => Promise<boolean>}}
  */
 export function useResumeGeneration({ setJobs }) {
-  const [generatingJobId, setGeneratingJobId] = useState(null);
+  const [generatingJobIds, setGeneratingJobIds] = useState(() => new Set());
   const [errorsByJobId, setErrorsByJobId] = useState({});
 
   async function generateResume(job) {
-    setGeneratingJobId(job.id);
+    setGeneratingJobIds((current) => new Set(current).add(job.id));
     setErrorsByJobId((current) => ({ ...current, [job.id]: '' }));
     try {
       const response = await fetch('/api/resume/generate', {
@@ -29,9 +29,13 @@ export function useResumeGeneration({ setJobs }) {
       setErrorsByJobId((current) => ({ ...current, [job.id]: error.message || 'Could not generate the resume.' }));
       return false;
     } finally {
-      setGeneratingJobId(null);
+      setGeneratingJobIds((current) => {
+        const next = new Set(current);
+        next.delete(job.id);
+        return next;
+      });
     }
   }
 
-  return { generatingJobId, errorsByJobId, generateResume };
+  return { generatingJobIds, errorsByJobId, generateResume };
 }

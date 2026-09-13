@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   relevance_score INTEGER,
   relevance_reason TEXT,
   resume_path TEXT DEFAULT NULL,
+  status TEXT NOT NULL DEFAULT 'not_applied'
+    CHECK (status IN ('not_applied', 'applied', 'in_process', 'closed')),
   is_new BOOLEAN DEFAULT 1,
   UNIQUE(company, job_id)
 );
@@ -24,10 +26,22 @@ CREATE TABLE IF NOT EXISTS applications (
   job_id INTEGER REFERENCES jobs(id),
   applied_at DATETIME,
   resume_path TEXT,
+  -- Deprecated legacy field; the application funnel state lives in jobs.status.
   status TEXT DEFAULT 'saved',
   follow_up_due DATETIME,
   notes TEXT,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Granular interview outcomes are tracked independently from the job funnel.
+CREATE TABLE IF NOT EXISTS interviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id INTEGER NOT NULL REFERENCES jobs(id),
+  company_name TEXT NOT NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('shortlisted', 'ongoing', 'rejected', 'offer-received', 'accepted')),
+  comments TEXT NOT NULL DEFAULT '',
+  contacts TEXT NOT NULL DEFAULT ''
 );
 
 -- Outreach table

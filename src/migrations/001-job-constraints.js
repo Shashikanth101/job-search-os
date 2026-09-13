@@ -17,6 +17,7 @@ export function migrateJobConstraints(db) {
       const brokenReferences = db.pragma('foreign_key_check');
       if (brokenReferences.length) throw new Error(`Existing orphan references require cleanup first: ${JSON.stringify(brokenReferences)}`);
       const rows = db.prepare('SELECT id, job_type FROM jobs').all();
+      const hasStatus = db.prepare('PRAGMA table_info(jobs)').all().some((column) => column.name === 'status');
       for (const row of rows) {
         if (!normalizeJobType(row.job_type)) throw new Error(`Unsupported job_type on job ${row.id}: ${row.job_type}`);
       }
@@ -32,11 +33,14 @@ export function migrateJobConstraints(db) {
           CHECK (job_type IN ('full-time', 'part-time', 'contract', 'internship')),
         description TEXT, apply_url TEXT, source TEXT,
         found_at DATETIME DEFAULT CURRENT_TIMESTAMP, posted_at DATETIME,
-        relevance_score INTEGER, relevance_reason TEXT, resume_path TEXT DEFAULT NULL, is_new BOOLEAN DEFAULT 1,
+        relevance_score INTEGER, relevance_reason TEXT, resume_path TEXT DEFAULT NULL,
+        status TEXT NOT NULL DEFAULT 'not_applied' CHECK (status IN ('not_applied', 'applied', 'in_process', 'closed')),
+        is_new BOOLEAN DEFAULT 1,
         UNIQUE(company, job_id)
       );
       INSERT INTO jobs_constrained SELECT id, job_id, title, company, location, 'full-time',
-        description, apply_url, source, found_at, posted_at, relevance_score, relevance_reason, resume_path, is_new FROM jobs;`);
+        description, apply_url, source, found_at, posted_at, relevance_score, relevance_reason, resume_path,
+        ${hasStatus ? 'status' : "'not_applied'"}, is_new FROM jobs;`);
       const update = db.prepare('UPDATE jobs_constrained SET job_type=? WHERE id=?');
       for (const row of rows) update.run(normalizeJobType(row.job_type), row.id);
       db.exec('DROP TABLE jobs; ALTER TABLE jobs_constrained RENAME TO jobs;');

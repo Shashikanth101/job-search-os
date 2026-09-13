@@ -6,7 +6,7 @@ import { StatsSummary } from './components/applications/StatsSummary';
 import { ManualApplicationForm } from './components/applications/ManualApplicationForm';
 import { ErrorBanner } from './components/ui/ErrorBanner';
 import { JobFilters } from './components/applications/JobFilters';
-import { JobList } from './components/applications/JobList';
+import { JobsTable } from './components/applications/JobsTable';
 import { OutreachSection } from './components/outreach/OutreachSection';
 import { MessageTemplatesSection } from './components/outreach/MessageTemplatesSection';
 import { ManualLinksList } from './components/applications/ManualLinksList';
@@ -20,7 +20,7 @@ import { useApplicationActions } from './hooks/useApplicationActions';
 import { useClipboardCopy } from './hooks/useClipboardCopy';
 import { useResumeGeneration } from './hooks/useResumeGeneration';
 
-const APPLICATION_STATUSES = ['saved', 'applied', 'interviewing', 'rejected', 'offer', 'followed_up'];
+const JOB_STATUSES = ['not_applied', 'applied', 'in_process', 'closed'];
 
 export function App() {
   const [activeTab, setActiveTab] = useState('jobs');
@@ -28,7 +28,7 @@ export function App() {
   const [manualSubmitting, setManualSubmitting] = useState(false);
   const [manualResult, setManualResult] = useState(null);
   const [company, setCompany] = useState('All');
-  const [applicationStatus, setApplicationStatus] = useState('All');
+  const [jobStatus, setJobStatus] = useState('All');
   const [minScore, setMinScore] = useState(5);
   const [newOnly, setNewOnly] = useState(false);
   const [indiaOnly, setIndiaOnly] = useState(true);
@@ -44,15 +44,17 @@ export function App() {
   } = useOutreach();
   const {
     updatingApplicationId,
+    updatingJobIds,
+    applicationErrorsByJobId,
     error: actionsError,
     manualError,
     submitManualApplication: submitManualApplicationRequest,
     saveApplication,
-    changeApplicationStatus,
+    changeJobStatus,
     markFollowedUp,
   } = useApplicationActions({ setJobs, refetchStats, refetchJobs });
   const { copiedKey: copiedTemplate, copy: copyTemplate, error: clipboardError } = useClipboardCopy();
-  const { generatingJobId, errorsByJobId, generateResume } = useResumeGeneration({ setJobs });
+  const { generatingJobIds, errorsByJobId, generateResume } = useResumeGeneration({ setJobs });
 
   const loading = jobsLoading || manualLinksLoading || statsLoading || outreachLoading;
   const error = jobsError || manualLinksError || statsError || outreachError || actionsError || clipboardError;
@@ -93,9 +95,9 @@ export function App() {
       .filter((job) => company === 'All' || job.company === company)
       .filter((job) => job.source === 'manual' || Number(job.relevance_score) >= minScore)
       .filter((job) => !newOnly || job.is_new)
-      .filter((job) => applicationStatus === 'All' || (job.application_status || 'untracked') === applicationStatus)
+      .filter((job) => jobStatus === 'All' || (job.status || 'not_applied') === jobStatus)
       .sort((a, b) => Number(b.relevance_score) - Number(a.relevance_score)),
-    [applicationStatus, company, jobs, minScore, newOnly],
+    [jobStatus, company, jobs, minScore, newOnly],
   );
 
   async function saveApplicationDetails(event, job) {
@@ -103,7 +105,6 @@ export function App() {
     const form = new FormData(event.currentTarget);
     await saveApplication(job, {
       applied_at: form.get('applied_at') || null,
-      resume_path: form.get('resume_path') || null,
       follow_up_due: form.get('follow_up_due') || null,
       notes: form.get('notes') || null,
     });
@@ -138,9 +139,9 @@ export function App() {
             company={company}
             companies={companies}
             onCompanyChange={setCompany}
-            applicationStatus={applicationStatus}
-            applicationStatuses={APPLICATION_STATUSES}
-            onApplicationStatusChange={setApplicationStatus}
+            jobStatus={jobStatus}
+            jobStatuses={JOB_STATUSES}
+            onJobStatusChange={setJobStatus}
             minScore={minScore}
             onMinScoreChange={setMinScore}
             newOnly={newOnly}
@@ -153,14 +154,16 @@ export function App() {
         <ErrorBanner message={error} />
 
         {activeTab === 'jobs' && (
-          <JobList
+          <JobsTable
             jobs={visibleJobs}
             loading={loading}
             updatingApplicationId={updatingApplicationId}
-            applicationStatuses={APPLICATION_STATUSES}
-            onStatusChange={changeApplicationStatus}
+            updatingJobIds={updatingJobIds}
+            applicationErrorsByJobId={applicationErrorsByJobId}
+            jobStatuses={JOB_STATUSES}
+            onStatusChange={changeJobStatus}
             onSaveDetails={saveApplicationDetails}
-            generatingResumeJobId={generatingJobId}
+            generatingResumeJobIds={generatingJobIds}
             resumeErrors={errorsByJobId}
             onGenerateResume={generateResume}
           />

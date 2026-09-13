@@ -9,20 +9,16 @@ import { serializeJob } from './db.js';
 import { compileResume } from './resume/compiler.js';
 import { generateResume } from './resume/generator.js';
 
-const APPLICATION_STATUSES = ['saved', 'applied', 'interviewing', 'rejected', 'offer', 'followed_up'];
+const JOB_STATUSES = ['not_applied', 'applied', 'in_process', 'closed'];
 
 function parseId(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function getApplicationInput(body = {}, fallbackStatus = 'saved') {
-  const status = body.status ?? fallbackStatus;
-  if (!APPLICATION_STATUSES.includes(status)) return { error: `status must be one of: ${APPLICATION_STATUSES.join(', ')}.` };
+function getApplicationInput(body = {}) {
   return {
-    status,
     applied_at: body.applied_at ?? null,
-    resume_path: body.resume_path ?? null,
     follow_up_due: body.follow_up_due ?? null,
     notes: body.notes ?? null,
   };
@@ -94,9 +90,7 @@ export function createApp(db) {
     const jobs = db.prepare(`
       SELECT jobs.*,
         (SELECT id FROM applications WHERE applications.job_id = jobs.id ORDER BY applications.id DESC LIMIT 1) AS application_id,
-        (SELECT status FROM applications WHERE applications.job_id = jobs.id ORDER BY applications.id DESC LIMIT 1) AS application_status,
         (SELECT applied_at FROM applications WHERE applications.job_id = jobs.id ORDER BY applications.id DESC LIMIT 1) AS application_applied_at,
-        (SELECT resume_path FROM applications WHERE applications.job_id = jobs.id ORDER BY applications.id DESC LIMIT 1) AS application_resume_path,
         (SELECT follow_up_due FROM applications WHERE applications.job_id = jobs.id ORDER BY applications.id DESC LIMIT 1) AS application_follow_up_due,
         (SELECT notes FROM applications WHERE applications.job_id = jobs.id ORDER BY applications.id DESC LIMIT 1) AS application_notes
       FROM jobs ${where}
@@ -112,7 +106,7 @@ export function createApp(db) {
    * @returns {Promise<import('express').Response>} JSON response.
    */
   app.post('/api/jobs/manual', async (req, res) => {
-    const { company, title, jobDescription, applyUrl, location = 'India', job_type = 'full-time', status = 'saved' } = req.body ?? {};
+    const { company, title, jobDescription, applyUrl, location = 'India', job_type = 'full-time', status = 'not_applied' } = req.body ?? {};
     if (!company || !title || !jobDescription || !applyUrl) {
       return res.status(400).json({ error: 'company, title, jobDescription, and applyUrl are required.' });
     }
@@ -121,27 +115,25 @@ export function createApp(db) {
     }
     if (!JOB_TYPES.includes(job_type)) return res.status(400).json({ error: 'Invalid job type.' });
     if (typeof applyUrl !== 'string') return res.status(400).json({ error: 'applyUrl must be a string.' });
+    if (!JOB_STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of: ${JOB_STATUSES.join(', ')}.` });
     if (db.prepare('SELECT id FROM jobs WHERE apply_url = ?').get(applyUrl)) {
       return res.status(409).json({ error: 'This job is already tracked' });
     }
 
-    const applicationInput = getApplicationInput({ status });
-    if (applicationInput.error) return res.status(400).json({ error: applicationInput.error });
-
     try {
       const jobId = `manual-${Date.now()}`;
       const result = db.prepare(`
-        INSERT INTO jobs (job_id, title, company, description, apply_url, location, job_type, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'manual')
-      `).run(jobId, title, company, jobDescription, applyUrl, location?.trim() || null, job_type);
+        INSERT INTO jobs (job_id, title, company, description, apply_url, location, job_type, source, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?)
+      `).run(jobId, title, company, jobDescription, applyUrl, location?.trim() || null, job_type, status);
       const { score, reason } = await rankJob(title, jobDescription, company, location);
       db.prepare('UPDATE jobs SET relevance_score = ?, relevance_reason = ? WHERE id = ?').run(score, reason, result.lastInsertRowid);
       const application = db.prepare(`
-        INSERT INTO applications (job_id, applied_at, status)
-        VALUES (?, ?, ?)
-      `).run(result.lastInsertRowid, status === 'applied' ? new Date().toISOString() : null, status);
+        INSERT INTO applications (job_id, applied_at)
+        VALUES (?, ?)
+      `).run(result.lastInsertRowid, ['applied', 'in_process'].includes(status) ? new Date().toISOString() : null);
       const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(result.lastInsertRowid);
-      return res.status(201).json({ ...serializeJob(job), application_id: application.lastInsertRowid, application_status: status });
+      return res.status(201).json({ ...serializeJob(job), application_id: application.lastInsertRowid });
     } catch (error) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' && error.message.includes('jobs.apply_url')) {
         return res.status(409).json({ error: 'This job is already tracked' });
@@ -160,6 +152,17 @@ export function createApp(db) {
     const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(Number(req.params.id));
     if (!job) return res.status(404).json({ error: 'Job not found.' });
     return res.json(serializeJob(job));
+  });
+
+  /** Updates the coarse funnel status for one job. */
+  app.patch('/api/jobs/:id/status', (req, res) => {
+    const jobId = parseId(req.params.id);
+    if (!jobId) return res.status(400).json({ error: 'Job id must be a positive integer.' });
+    const { status } = req.body ?? {};
+    if (!JOB_STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of: ${JOB_STATUSES.join(', ')}.` });
+    const result = db.prepare('UPDATE jobs SET status = ? WHERE id = ?').run(status, jobId);
+    if (!result.changes) return res.status(404).json({ error: 'Job not found.' });
+    return res.json(serializeJob(db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId)));
   });
 
   /**
@@ -191,10 +194,11 @@ export function createApp(db) {
     if (input.error) return res.status(400).json({ error: input.error });
 
     const result = db.prepare(`
-      INSERT INTO applications (job_id, applied_at, resume_path, status, follow_up_due, notes)
-      VALUES (@job_id, @applied_at, @resume_path, @status, @follow_up_due, @notes)
+      INSERT INTO applications (job_id, applied_at, follow_up_due, notes)
+      VALUES (@job_id, @applied_at, @follow_up_due, @notes)
     `).run({ job_id: jobId, ...input });
-    return res.status(201).json(db.prepare('SELECT * FROM applications WHERE id = ?').get(result.lastInsertRowid));
+    return res.status(201).json(db.prepare(`SELECT id, job_id, applied_at, follow_up_due, notes, updated_at
+      FROM applications WHERE id = ?`).get(result.lastInsertRowid));
   });
 
   /**
@@ -206,24 +210,23 @@ export function createApp(db) {
   app.patch('/api/applications/:id', (req, res) => {
     const applicationId = parseId(req.params.id);
     if (!applicationId) return res.status(400).json({ error: 'Application id must be a positive integer.' });
-    const existing = db.prepare('SELECT * FROM applications WHERE id = ?').get(applicationId);
+    const existing = db.prepare(`SELECT id, job_id, applied_at, follow_up_due, notes
+      FROM applications WHERE id = ?`).get(applicationId);
     if (!existing) {
       return res.status(404).json({ error: 'Application not found.' });
     }
 
-    const input = getApplicationInput({ ...existing, ...req.body }, existing.status);
-    if (input.error) return res.status(400).json({ error: input.error });
+    const input = getApplicationInput({ ...existing, ...req.body });
     db.prepare(`
       UPDATE applications
       SET applied_at = @applied_at,
-          resume_path = @resume_path,
-          status = @status,
           follow_up_due = @follow_up_due,
           notes = @notes,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = @id
     `).run({ id: applicationId, ...input });
-    return res.json(db.prepare('SELECT * FROM applications WHERE id = ?').get(applicationId));
+    return res.json(db.prepare(`SELECT id, job_id, applied_at, follow_up_due, notes, updated_at
+      FROM applications WHERE id = ?`).get(applicationId));
   });
 
   /**
@@ -286,9 +289,16 @@ export function createApp(db) {
         (SELECT COUNT(*) FROM jobs WHERE is_new = 1 AND date(found_at, 'localtime') = date('now', 'localtime')) AS new_jobs_today,
         COUNT(*) AS total_jobs,
         COALESCE(AVG(relevance_score), 0) AS average_score,
-        (SELECT COUNT(*) FROM applications WHERE status = 'saved') AS saved_applications,
-        (SELECT COUNT(*) FROM applications WHERE status = 'applied') AS applied_applications,
-        (SELECT COUNT(*) FROM applications WHERE follow_up_due IS NOT NULL) AS pending_follow_ups
+        (SELECT COUNT(*) FROM jobs WHERE status = 'not_applied') AS saved_applications,
+        (SELECT COUNT(*) FROM jobs WHERE status IN ('applied', 'in_process')) AS applied_applications,
+        (SELECT COUNT(*) FROM applications
+          JOIN jobs ON jobs.id = applications.job_id
+          WHERE jobs.status IN ('applied', 'in_process')
+            AND applications.follow_up_due IS NOT NULL
+            AND applications.id = (
+              SELECT latest.id FROM applications AS latest
+              WHERE latest.job_id = jobs.id ORDER BY latest.id DESC LIMIT 1
+            )) AS pending_follow_ups
       FROM jobs
     `).get();
     const followUps = db.prepare(`
@@ -297,16 +307,22 @@ export function createApp(db) {
         jobs.id AS job_id,
         jobs.company,
         jobs.title,
-        applications.status,
         applications.applied_at,
+        applications.follow_up_due,
         applications.updated_at,
-        CAST(julianday('now') - julianday(
-          CASE WHEN applications.status = 'applied' THEN applications.applied_at ELSE applications.updated_at END
-        ) AS INTEGER) AS days_since_update
+        CAST(julianday('now') - julianday(COALESCE(applications.follow_up_due, applications.applied_at)) AS INTEGER) AS days_since_update
       FROM applications
       JOIN jobs ON jobs.id = applications.job_id
-      WHERE (applications.status = 'applied' AND applications.applied_at IS NOT NULL AND applications.applied_at < datetime('now', '-5 days'))
-         OR (applications.status = 'followed_up' AND applications.updated_at < datetime('now', '-10 days'))
+      WHERE jobs.status IN ('applied', 'in_process')
+        AND applications.id = (
+          SELECT latest.id FROM applications AS latest
+          WHERE latest.job_id = jobs.id ORDER BY latest.id DESC LIMIT 1
+        )
+        AND (
+          (applications.follow_up_due IS NOT NULL AND datetime(applications.follow_up_due) <= datetime('now'))
+          OR (applications.follow_up_due IS NULL AND applications.applied_at IS NOT NULL
+            AND datetime(applications.applied_at) < datetime('now', '-5 days'))
+        )
       ORDER BY days_since_update DESC
     `).all();
     return res.json({

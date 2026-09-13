@@ -8,16 +8,19 @@ import { useState } from 'react';
  * @param {() => Promise<void>} deps.refetchJobs
  * @returns {{
  *   updatingApplicationId: (string|number|null),
+ *   updatingJobIds: Set<string|number>,
  *   error: string,
  *   manualError: string,
  *   submitManualApplication: (payload: {company: string, title: string, jobDescription: string, applyUrl: string, location?: string, job_type?: string}) => Promise<object|null>,
  *   saveApplication: (job: object, changes: object) => Promise<object|null>,
- *   changeApplicationStatus: (job: object, status: string) => Promise<object|null>,
+ *   changeJobStatus: (job: object, status: string) => Promise<object|null>,
  *   markFollowedUp: (reminder: object) => Promise<void>,
  * }}
  */
 export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
   const [updatingApplicationId, setUpdatingApplicationId] = useState(null);
+  const [updatingJobIds, setUpdatingJobIds] = useState(() => new Set());
+  const [applicationErrorsByJobId, setApplicationErrorsByJobId] = useState({});
   const [error, setError] = useState('');
   const [manualError, setManualError] = useState('');
 
@@ -50,8 +53,8 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
     const endpoint = job.application_id
       ? `/api/applications/${job.application_id}`
       : `/api/jobs/${job.id}/application`;
-    setUpdatingApplicationId(job.id);
-    setError('');
+    setUpdatingJobIds((current) => new Set(current).add(job.id));
+    setApplicationErrorsByJobId((current) => ({ ...current, [job.id]: '' }));
     try {
       const response = await fetch(endpoint, {
         method,
@@ -63,24 +66,56 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
       setJobs((currentJobs) => currentJobs.map((currentJob) => currentJob.id === job.id ? {
         ...currentJob,
         application_id: application.id,
-        application_status: application.status,
         application_applied_at: application.applied_at,
-        application_resume_path: application.resume_path,
         application_follow_up_due: application.follow_up_due,
         application_notes: application.notes,
       } : currentJob));
       await refetchStats();
       return application;
     } catch (requestError) {
-      setError(requestError.message || 'Could not update application details.');
+      setApplicationErrorsByJobId((current) => ({
+        ...current,
+        [job.id]: requestError.message || 'Could not update application details.',
+      }));
       return null;
     } finally {
-      setUpdatingApplicationId(null);
+      setUpdatingJobIds((current) => {
+        const next = new Set(current);
+        next.delete(job.id);
+        return next;
+      });
     }
   }
 
-  async function changeApplicationStatus(job, status) {
-    return saveApplication(job, { status });
+  async function changeJobStatus(job, status) {
+    setUpdatingJobIds((current) => new Set(current).add(job.id));
+    setApplicationErrorsByJobId((current) => ({ ...current, [job.id]: '' }));
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/status`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not update job status.');
+      setJobs((currentJobs) => currentJobs.map((currentJob) => currentJob.id === job.id
+        ? { ...currentJob, status: result.status }
+        : currentJob));
+      await refetchStats();
+      return result;
+    } catch (requestError) {
+      setApplicationErrorsByJobId((current) => ({
+        ...current,
+        [job.id]: requestError.message || 'Could not update job status.',
+      }));
+      return null;
+    } finally {
+      setUpdatingJobIds((current) => {
+        const next = new Set(current);
+        next.delete(job.id);
+        return next;
+      });
+    }
   }
 
   async function markFollowedUp(reminder) {
@@ -90,7 +125,7 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
       const response = await fetch(`/api/applications/${reminder.application_id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status: 'followed_up' }),
+        body: JSON.stringify({ follow_up_due: new Date(Date.now() + (10 * 24 * 60 * 60 * 1000)).toISOString() }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not update the reminder.');
@@ -104,11 +139,13 @@ export function useApplicationActions({ setJobs, refetchStats, refetchJobs }) {
 
   return {
     manualError,
+    applicationErrorsByJobId,
+    updatingJobIds,
     updatingApplicationId,
     error,
     submitManualApplication,
     saveApplication,
-    changeApplicationStatus,
+    changeJobStatus,
     markFollowedUp,
   };
 }

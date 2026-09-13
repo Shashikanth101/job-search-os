@@ -7,14 +7,14 @@ const LOCATION_OPTIONS = [
 ];
 
 /**
- * Job feed filter controls: company, application status, min score, new-only, location.
+ * Job feed filter controls: company, job status, min score, new-only, location.
  * @param {object} props
  * @param {string} props.company
  * @param {string[]} props.companies
  * @param {(company: string) => void} props.onCompanyChange
- * @param {string} props.applicationStatus
- * @param {string[]} props.applicationStatuses
- * @param {(status: string) => void} props.onApplicationStatusChange
+ * @param {string} props.jobStatus
+ * @param {string[]} props.jobStatuses
+ * @param {(status: string) => void} props.onJobStatusChange
  * @param {number} props.minScore
  * @param {(score: number) => void} props.onMinScoreChange
  * @param {boolean} props.newOnly
@@ -26,9 +26,9 @@ export function JobFilters({
   company,
   companies,
   onCompanyChange,
-  applicationStatus,
-  applicationStatuses,
-  onApplicationStatusChange,
+  jobStatus,
+  jobStatuses,
+  onJobStatusChange,
   minScore,
   onMinScoreChange,
   newOnly,
@@ -52,15 +52,14 @@ export function JobFilters({
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-slate-700">Application status</span>
+          <span className="mb-2 block text-sm font-semibold text-slate-700">Job status</span>
           <select
             className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-            value={applicationStatus}
-            onChange={(event) => onApplicationStatusChange(event.target.value)}
+            value={jobStatus}
+            onChange={(event) => onJobStatusChange(event.target.value)}
           >
             <option>All</option>
-            <option>untracked</option>
-            {applicationStatuses.map((status) => <option key={status}>{status}</option>)}
+            {jobStatuses.map((status) => <option key={status}>{status}</option>)}
           </select>
         </label>
 

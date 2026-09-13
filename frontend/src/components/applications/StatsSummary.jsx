@@ -1,13 +1,13 @@
 /**
- * Saved / Applied / Pending-follow-up counters.
+ * Not-applied / Active-application / Pending-follow-up counters.
  * @param {{ stats: {saved_applications: number, applied_applications: number, pending_follow_ups: number}|null }} props
  */
 export function StatsSummary({ stats }) {
   if (!stats) return null;
 
   const items = [
-    ['Saved', stats.saved_applications],
-    ['Applied', stats.applied_applications],
+    ['Not applied', stats.saved_applications],
+    ['Active applications', stats.applied_applications],
     ['Pending follow-ups', stats.pending_follow_ups],
   ];
 

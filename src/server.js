@@ -10,5 +10,5 @@ const port = Number(process.env.PORT ?? 3001);
 app.listen(port, () => {
   console.log(`job-search-os API listening on port ${port}`);
   startScheduler(database);
-  console.log('Scrapers scheduled daily at 09:00 and 18:00 Asia/Kolkata.');
+  console.log('Scrapers scheduled daily at 09:00 and 18:00; stale applied jobs close weekly on Monday at 09:00 Asia/Kolkata.');
 });
