@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LIVSPACE_BULLETS, PROJECT_BULLETS, SKILLS_FIXED, STARTUS_BULLETS } from '../../assets/bullet-pool.js';
 import { resumeChat } from '../llm/index.js';
+import { findKeywordGaps, latexToVisibleText } from './keyword-coverage.js';
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const WORK_EXPERIENCE_PATH = path.join(PROJECT_ROOT, 'assets', 'previous_work_experience.md');
@@ -99,6 +100,7 @@ export async function generateResume({ jobTitle, company, jobDescription, jobId 
     (result, [placeholder, value]) => result.replaceAll(placeholder, value ?? ''),
     template,
   );
+  const keywordGaps = findKeywordGaps(jobDescription, latexToVisibleText(filledTemplate));
 
   const outputDirectory = path.join(
     RESUMES_PATH,
@@ -108,5 +110,11 @@ export async function generateResume({ jobTitle, company, jobDescription, jobId 
   await fs.mkdir(outputDirectory, { recursive: true });
   const texFilePath = path.join(outputDirectory, 'resume.tex');
   await fs.writeFile(texFilePath, filledTemplate, 'utf8');
+  const keywordReportPath = path.join(outputDirectory, 'resume-keyword-gaps.txt');
+  const keywordReport = keywordGaps.length
+    ? 'Literal job-description terms not found in this resume:\n' + keywordGaps.map((term) => '- ' + term).join('\n') + '\n'
+    : 'No candidate technology or qualification terms were missing literally.\n';
+  await fs.writeFile(keywordReportPath, keywordReport, 'utf8');
+  console.log('[Resume Keyword Coverage] ' + company + ' — ' + jobTitle + ': ' + (keywordGaps.length ? keywordGaps.join(', ') : 'no literal gaps found'));
   return texFilePath;
 }

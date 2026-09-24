@@ -1,5 +1,5 @@
 export const LIVSPACE_BULLETS = [
-  { id: 'L1', text: 'Owned core frontend domains (Cart \\& Account) in a revenue-critical Next.js (SSR) platform serving a \\textbf{1M+ user base} with \\textbf{99.9\\% uptime}, supporting \\textbf{\\rupee 250+ Cr annual product revenue}' },
+  { id: 'L1', text: 'Owned core frontend domains (Cart \\& Account) in a revenue-critical Next.js (SSR) platform serving a \\textbf{1M+ user base} with \\textbf{99.9\\% uptime}, supporting \\textbf{250+ Cr annual product revenue}' },
   { id: 'L2', text: 'Built the complete Account module (Profile, Addresses, Wallet, Order History), integrating \\textbf{20+ backend APIs} with authentication guards, token refresh handling, and resilient API orchestration' },
   { id: 'L3', text: 'Led frontend workflow for Delivery Challan and E-Way Bill generation in the Logistics Management System, enabling compliant movement of \\textbf{3K--4K consignments daily} across India' },
   { id: 'L4', text: 'Implemented \\textbf{Micro-Frontend architecture} using \\textbf{Webpack Module Federation}, building a shared, highly reusable frontend platform enabling independent deployments within a unified Composer shell' },
@@ -55,8 +55,8 @@ export const SKILLS_POOL = {
 
 export const SKILLS_FIXED = {
   ai_agentic: 'LLM Integration, Tool-Calling/Function-Calling, RAG, MCP (Model Context Protocol)',
-  frontend: 'React, Next.js (SSR/SSG/ISR), TypeScript, JavaScript (ES6+), HTML5, CSS3, React Native',
+  frontend: 'React.js, Next.js (SSR/SSG/ISR), TypeScript, JavaScript (ES6+), HTML5, CSS3, React Native',
   state_and_data: 'Redux, Zustand, GraphQL, REST APIs, API Orchestration, Tanstack Query',
   architecture: 'Micro-Frontends (Webpack Module Federation), Webpack, SSR, Authentication Flows, System Design',
-  backend_and_tooling: 'Node.js, PostgreSQL, Jest, Cypress, Git, CI/CD, Chrome Extensions, Agile/Scrum',
+  backend_and_tooling: 'Node.js, Jest, Cypress, Git, CI/CD, Web Extensions, Agile/Scrum',
 };

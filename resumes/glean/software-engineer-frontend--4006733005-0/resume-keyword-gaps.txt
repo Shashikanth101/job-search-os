@@ -1,0 +1,15 @@
+Literal job-description terms not found in this resume:
+- React.js
+- Progressive Web Apps
+- PWA
+- Web Extensions
+- Electron
+- Capacitor
+- Microsoft Teams
+- Zoom
+- ServiceNow
+- Zendesk
+- 60FPS
+- zero-latency
+- consumer grade
+- BA/BS in computer science
