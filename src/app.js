@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'node:fs/promises';
 import linkedinOutreach from './config/linkedin-outreach.js';
 import manualLinks from './config/manual-links.js';
+import uncoveredCompanies from './config/uncovered-companies.js';
 import messageTemplates from './config/message-templates.js';
 import { rankJob } from './ranker/index.js';
 import { JOB_TYPES } from './jobs/fields.js';
@@ -40,6 +41,14 @@ export function createApp(db) {
    * @returns {import('express').Response} JSON response.
    */
   app.get('/api/manual-links', (_req, res) => res.json(manualLinks));
+
+  /**
+   * Returns target companies that still need manual scraper triage.
+   * @param {import('express').Request} _req Express request.
+   * @param {import('express').Response} res Express response.
+   * @returns {import('express').Response} JSON response.
+   */
+  app.get('/api/uncovered-companies', (_req, res) => res.json(uncoveredCompanies));
 
   /**
    * Returns LinkedIn recruiter and hiring-manager search links.

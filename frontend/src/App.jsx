@@ -6,15 +6,17 @@ import { StatsSummary } from './components/applications/StatsSummary';
 import { ManualApplicationForm } from './components/applications/ManualApplicationForm';
 import { ErrorBanner } from './components/ui/ErrorBanner';
 import { JobFilters } from './components/applications/JobFilters';
-import { JobsTable } from './components/applications/JobsTable';
+import { JobsTableView } from './components/applications/JobsTableView';
 import { OutreachSection } from './components/outreach/OutreachSection';
 import { MessageTemplatesSection } from './components/outreach/MessageTemplatesSection';
 import { ManualLinksList } from './components/applications/ManualLinksList';
+import { UncoveredCompaniesSection } from './components/applications/UncoveredCompaniesSection';
 import { RemindersSection } from './components/applications/RemindersSection';
 
 import { useJobs } from './hooks/useJobs';
 import { useStats } from './hooks/useStats';
 import { useManualLinks } from './hooks/useManualLinks';
+import { useUncoveredCompanies } from './hooks/useUncoveredCompanies';
 import { useOutreach } from './hooks/useOutreach';
 import { useApplicationActions } from './hooks/useApplicationActions';
 import { useClipboardCopy } from './hooks/useClipboardCopy';
@@ -35,6 +37,7 @@ export function App() {
 
   const { jobs, setJobs, loading: jobsLoading, error: jobsError, refetchJobs } = useJobs(indiaOnly);
   const { manualLinks, loading: manualLinksLoading, error: manualLinksError } = useManualLinks();
+  const { uncoveredCompanies, loading: uncoveredCompaniesLoading, error: uncoveredCompaniesError } = useUncoveredCompanies();
   const { stats, loading: statsLoading, error: statsError, refetchStats } = useStats();
   const {
     linkedinOutreach,
@@ -56,8 +59,8 @@ export function App() {
   const { copiedKey: copiedTemplate, copy: copyTemplate, error: clipboardError } = useClipboardCopy();
   const { generatingJobIds, errorsByJobId, generateResume } = useResumeGeneration({ setJobs });
 
-  const loading = jobsLoading || manualLinksLoading || statsLoading || outreachLoading;
-  const error = jobsError || manualLinksError || statsError || outreachError || actionsError || clipboardError;
+  const loading = jobsLoading || manualLinksLoading || uncoveredCompaniesLoading || statsLoading || outreachLoading;
+  const error = jobsError || manualLinksError || uncoveredCompaniesError || statsError || outreachError || actionsError || clipboardError;
 
   async function submitManualApplication(event) {
     const formEl = event.currentTarget;
@@ -154,7 +157,7 @@ export function App() {
         <ErrorBanner message={error} />
 
         {activeTab === 'jobs' && (
-          <JobsTable
+          <JobsTableView
             jobs={visibleJobs}
             loading={loading}
             updatingApplicationId={updatingApplicationId}
@@ -169,7 +172,12 @@ export function App() {
           />
         )}
 
-        {activeTab === 'jobs' && !loading && <ManualLinksList links={manualLinks} />}
+        {activeTab === 'jobs' && !loading && (
+          <>
+            <ManualLinksList links={manualLinks} />
+            <UncoveredCompaniesSection companies={uncoveredCompanies} />
+          </>
+        )}
 
         {activeTab === 'outreach' && (
           <section aria-labelledby="outreach-heading">

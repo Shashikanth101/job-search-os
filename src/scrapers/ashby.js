@@ -23,11 +23,13 @@ export class AshbyScraper extends BaseScraper {
    * @param {import('better-sqlite3').Database} options.db Database connection.
    * @param {string} options.company Company name.
    * @param {string} options.slug Ashby job board identifier.
-   */
-  constructor({ db, company, slug }) {
+   * @param {string} [options.departmentId] Optional hosted-board department filter parameter.
+  */
+  constructor({ db, company, slug, departmentId }) {
     super({ db, source: `ashby-${slug}` });
     this.company = company;
     this.slug = slug;
+    this.departmentId = departmentId;
   }
 
   /**
@@ -35,7 +37,9 @@ export class AshbyScraper extends BaseScraper {
    * @returns {Promise<object>} Ashby API response.
    */
   async scrape() {
-    const response = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(this.slug)}`, {
+    const endpoint = new URL(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(this.slug)}`);
+    if (this.departmentId) endpoint.searchParams.set('departmentId', this.departmentId);
+    const response = await fetch(endpoint.toString(), {
       signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) throw new Error(`Ashby fetch failed for ${this.company}: ${response.status}`);

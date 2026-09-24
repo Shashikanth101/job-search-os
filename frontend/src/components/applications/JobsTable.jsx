@@ -6,6 +6,8 @@ import { LoadingSkeletonTable } from '../ui/LoadingSkeletonTable';
  * @param {object} props
  * @param {object[]} props.jobs - Already-filtered and sorted jobs.
  * @param {boolean} props.loading
+ * @param {string} [props.headingId] Unique heading for grouped tables.
+ * @param {string} [props.headingLabel] Accessible table section label.
  * @param {(string|number|null)} props.updatingApplicationId
  * @param {Set<string|number>} props.updatingJobIds
  * @param {Record<string, string>} props.applicationErrorsByJobId
@@ -16,12 +18,12 @@ import { LoadingSkeletonTable } from '../ui/LoadingSkeletonTable';
  * @param {(event: import('react').FormEvent<HTMLFormElement>, job: object) => void} props.onSaveDetails
  * @param {(job: object) => Promise<boolean>} props.onGenerateResume
  */
-export function JobsTable({ jobs, loading, updatingApplicationId, updatingJobIds, applicationErrorsByJobId, generatingResumeJobIds, resumeErrors, jobStatuses, onStatusChange, onSaveDetails, onGenerateResume }) {
+export function JobsTable({ jobs, loading, headingId = 'ranked-jobs-heading', headingLabel = 'Ranked jobs', updatingApplicationId, updatingJobIds, applicationErrorsByJobId, generatingResumeJobIds, resumeErrors, jobStatuses, onStatusChange, onSaveDetails, onGenerateResume }) {
   if (loading) return <LoadingSkeletonTable />;
 
   return (
-    <section aria-labelledby="ranked-jobs-heading">
-      <h2 id="ranked-jobs-heading" className="sr-only">Ranked jobs</h2>
+    <section aria-labelledby={headingId}>
+      <h2 id={headingId} className="sr-only">{headingLabel}</h2>
       {jobs.length ? (
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full min-w-[900px] border-collapse text-left">

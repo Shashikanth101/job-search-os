@@ -7,12 +7,15 @@ import { runAllScrapers } from './scrapers/index.js';
  * @returns {Promise<void>} Resolves after all scrapers finish.
  */
 async function main() {
+  const args = process.argv.slice(2);
+  if (args.some((arg) => arg !== '--source=workday')) throw new Error('Usage: npm run scrape -- [--source=workday]');
   const database = createDatabase();
   try {
-    const results = await runAllScrapers(database);
+    const results = await runAllScrapers(database, { sourcePrefix: args.includes('--source=workday') ? 'workday-' : '' });
     console.log(JSON.stringify(results, null, 2));
+    if (results.some((result) => result.error)) process.exitCode = 1;
   } finally {
-    process.exit(0);
+    database.close();
   }
 }
 

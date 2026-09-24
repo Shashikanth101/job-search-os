@@ -5,4 +5,5 @@ export default [
   { company: 'BrowserStack', url: 'https://www.browserstack.com/careers', notes: 'Filter: Frontend, India' },
   { company: 'Swiggy', url: 'https://careers.swiggy.com', notes: 'Filter: Engineering, Frontend' },
   { company: 'Zomato', url: 'https://www.zomato.com/careers', notes: 'Also on SmartRecruiters — check both' },
+  { company: 'Lightspeed Venture Partners portfolio board', url: 'https://jobs.lsvp.com', notes: 'Discovery-only board — browse periodically for new target companies' },
 ];

@@ -8,6 +8,7 @@ import { LeverScraper } from '../src/scrapers/lever.js';
 import { SmartRecruitersScraper } from '../src/scrapers/smartrecruiters.js';
 import { createScrapers } from '../src/scrapers/index.js';
 import { classifyTitle, isLocationEligible } from '../src/scrapers/pre-filter.js';
+import manualLinks from '../src/config/manual-links.js';
 
 test('department and location gates reject noise while retaining allowed and ambiguous titles', () => {
   for (const title of ['Account Executive', 'Sr Enterprise Account Exec - Utilities', 'Sales Development Representative', 'Frontend Engineer - Marketing', 'Site Reliability Engineer', 'Data Engineer', 'Recruiter']) {
@@ -109,6 +110,32 @@ test('Ashby rejects HTTP/schema failures and does not invent an India location',
   assert.equal(scraper.parseJobs({ jobs: [{ title: 'Frontend Engineer', location: 'San Francisco, US', secondaryLocations: [{ location: 'Bengaluru, India' }] }] }).length, 1);
 });
 
+test('Ashby sends optional departmentId through to the public board endpoint', async (t) => {
+  const scraper = new AshbyScraper({ db: {}, company: 'Gamma', slug: 'gamma', departmentId: 'engineering-id' });
+  let requestedUrl;
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    requestedUrl = url;
+    return { ok: true, json: async () => ({ jobs: [] }) };
+  });
+  await scraper.scrape();
+  assert.equal(new URL(requestedUrl).searchParams.get('departmentId'), 'engineering-id');
+  const unfiltered = new AshbyScraper({ db: {}, company: 'Hebbia', slug: 'hebbia-ai' });
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    requestedUrl = url;
+    return { ok: true, json: async () => ({ jobs: [] }) };
+  });
+  await unfiltered.scrape();
+  assert.equal(new URL(requestedUrl).search, '');
+});
+
+test('manual discovery links expose the Lightspeed portfolio board to the dashboard API config', () => {
+  assert.deepEqual(manualLinks.find((link) => link.url === 'https://jobs.lsvp.com'), {
+    company: 'Lightspeed Venture Partners portfolio board',
+    url: 'https://jobs.lsvp.com',
+    notes: 'Discovery-only board — browse periodically for new target companies',
+  });
+});
+
 test('SmartRecruiters paginates and only fetches details for eligible jobs', async (t) => {
   const scraper = new SmartRecruitersScraper({ db: {}, company: 'Test', slug: 'test' });
   const requested = [];
@@ -136,12 +163,15 @@ test('registry preserves existing sources and keeps only Perplexity Ashby', () =
   process.env.CAREER_PAGES_JSON = '[]';
   try {
     const scrapers = createScrapers({});
-    assert.equal(scrapers.length, 75);
-    assert.equal(new Set(scrapers.map(s => s.source)).size, 75);
+    assert.equal(scrapers.length, 97);
+    assert.equal(new Set(scrapers.map(s => s.source)).size, 97);
     assert.deepEqual(scrapers.filter(s => s.company === 'Perplexity AI').map(s => s.source), ['ashby-perplexity']);
     for (const source of ['greenhouse-razorpaysoftwareprivatelimited', 'greenhouse-groww', 'greenhouse-gleanwork', 'smartrecruiters-PHONEPELIMITED', 'smartrecruiters-Zomato1', 'swiggy-careers']) {
       assert.ok(scrapers.some(s => s.source === source), source);
     }
+    assert.equal(scrapers.find(s => s.source === 'lever-dexcarehealth').company, 'DexCare');
+    assert.equal(scrapers.find(s => s.source === 'ashby-hebbia-ai').company, 'Hebbia');
+    assert.equal(scrapers.find(s => s.source === 'ashby-gamma').departmentId, '3e8c857e-1085-4c45-86f5-8d192d398ac2');
   } finally {
     if (previousKey === undefined) delete process.env.FIRECRAWL_API_KEY;
     else process.env.FIRECRAWL_API_KEY = previousKey;

@@ -4,6 +4,8 @@ import { LeverScraper } from './lever.js';
 import { SmartRecruitersScraper } from './smartrecruiters.js';
 import { AshbyScraper } from './ashby.js';
 import { SwiggyScraper } from './swiggy.js';
+import { WorkdayScraper } from './workday.js';
+import { workdayConfigs } from '../config/workday.js';
 
 /**
  * Parses the optional JSON scraper configuration from the environment.
@@ -22,7 +24,7 @@ export function loadCareerPages() {
 /**
  * Builds all configured scraper instances.
  * @param {import('better-sqlite3').Database} db Database connection.
- * @returns {Array<FirecrawlCareerScraper | GreenhouseScraper | LeverScraper | SmartRecruitersScraper | AshbyScraper | SwiggyScraper>} Configured scrapers.
+ * @returns {Array<FirecrawlCareerScraper | GreenhouseScraper | LeverScraper | SmartRecruitersScraper | AshbyScraper | SwiggyScraper | WorkdayScraper>} Configured scrapers.
  */
 export function createScrapers(db) {
   const configuredScrapers = loadCareerPages().map((page) => new FirecrawlCareerScraper({ db, ...page }));
@@ -71,6 +73,7 @@ export function createScrapers(db) {
     { company: 'Upstox', slug: 'upstox' },
   ];
   const leverConfigs = [
+    { company: 'DexCare', slug: 'dexcarehealth' },
     { company: 'CRED', slug: 'cred' },
     { company: 'Meesho', slug: 'meesho' },
     { company: 'Acceldata', slug: 'acceldata' },
@@ -79,6 +82,8 @@ export function createScrapers(db) {
     { company: 'Spotify', slug: 'spotify' },
   ];
   const ashbyConfigs = [
+    { company: 'Hebbia', slug: 'hebbia-ai' },
+    { company: 'Gamma', slug: 'gamma', departmentId: '3e8c857e-1085-4c45-86f5-8d192d398ac2' },
     { company: 'UiPath', slug: 'uipath' },
     { company: 'Tekion', slug: 'tekion' },
     { company: 'Harvey', slug: 'harvey' },
@@ -112,22 +117,29 @@ export function createScrapers(db) {
   const smartRecruitersScrapers = smartRecruitersConfigs.map((config) => new SmartRecruitersScraper({ db, ...config }));
   const leverScrapers = leverConfigs.map((config) => new LeverScraper({ db, ...config }));
   const ashbyScrapers = ashbyConfigs.map((config) => new AshbyScraper({ db, ...config }));
-  return [...configuredScrapers, new SwiggyScraper({ db }), ...greenhouseScrapers, ...smartRecruitersScrapers, ...leverScrapers, ...ashbyScrapers];
+  const workdayScrapers = workdayConfigs.map((config) => new WorkdayScraper({ db, ...config }));
+  return [...configuredScrapers, new SwiggyScraper({ db }), ...greenhouseScrapers, ...smartRecruitersScrapers, ...leverScrapers, ...ashbyScrapers, ...workdayScrapers];
 }
 
 /**
  * Runs every configured scraper and logs failures without stopping other sources.
  * @param {import('better-sqlite3').Database} db Database connection.
+ * @param {object} [options] Optional source restriction for targeted live validation.
+ * @param {string} [options.sourcePrefix] Run only sources starting with this prefix.
  * @returns {Promise<Array<{source: string, saved: number, error?: string}>>} Run results.
  */
-export async function runAllScrapers(db) {
+export async function runAllScrapers(db, { sourcePrefix = '' } = {}) {
   const results = [];
-  for (const scraper of createScrapers(db)) {
+  for (const scraper of createScrapers(db).filter((entry) => entry.source.startsWith(sourcePrefix))) {
     try {
-      results.push({ source: scraper.source, saved: await scraper.run() });
+      const saved = await scraper.run();
+      const result = { company: scraper.company, source: scraper.source, ...scraper.lastRunStats, saved };
+      results.push(result);
+      console.log(`[Scrapers] ${JSON.stringify(result)}`);
     } catch (error) {
-      results.push({ source: scraper.source, saved: 0, error: error.message });
-      console.error(`Scraper failed for ${scraper.source}:`, error.message);
+      const result = { company: scraper.company, source: scraper.source, ...scraper.lastRunStats, saved: 0, error: error.message };
+      results.push(result);
+      console.error(`[Scrapers] ${JSON.stringify(result)}`);
     }
   }
   return results;
