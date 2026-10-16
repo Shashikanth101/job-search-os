@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { WorkdayScraper, parseWorkdayUrl } from '../src/scrapers/workday.js';
-import { workdayConfigs } from '../src/config/workday.js';
+import { workdayConfigs } from '../src/config/scrappers.js';
 import { createScrapers, runAllScrapers } from '../src/scrapers/index.js';
 
 const options = { db: {}, company: 'Test', url: 'https://test.wd5.myworkdayjobs.com/Careers' };
@@ -92,7 +92,7 @@ test('Workday skips failed details and honors explicit facet IDs', async (t) => 
   assert.deepEqual(scraper.parseJobs(raw).map((job) => job.job_id), ['2']);
 });
 
-test('Workday parses every supplied facet value and preserves repeated custom keys in all 19 registrations', (t) => {
+test('Workday parses every supplied facet value and preserves repeated custom keys in all 23 registrations', (t) => {
   const previousKey = process.env.FIRECRAWL_API_KEY;
   const previousPages = process.env.CAREER_PAGES_JSON;
   process.env.FIRECRAWL_API_KEY = 'test-key';
@@ -104,7 +104,7 @@ test('Workday parses every supplied facet value and preserves repeated custom ke
     else process.env.CAREER_PAGES_JSON = previousPages;
   });
   const scrapers = createScrapers({}).filter((scraper) => scraper instanceof WorkdayScraper);
-  assert.equal(scrapers.length, 19);
+  assert.equal(scrapers.length, 23);
   for (const config of workdayConfigs) {
     const scraper = scrapers.find((entry) => entry.company === config.company);
     const params = new URL(config.url).searchParams;
@@ -192,10 +192,9 @@ test('targeted runner isolates a company failure and continues all remaining Wor
     return 2;
   });
   const results = await runAllScrapers({}, { sourcePrefix: 'workday-' });
-  assert.equal(results.length, 19);
+  assert.equal(results.length, 23);
   assert.match(results[0].error, /403/);
   assert.equal(results[0].saved, 0);
-  assert.equal(results.at(-1).company, 'Wells Fargo');
-  assert.equal(results.at(-1).saved, 2);
+  assert.equal(results.find((row) => row.company === 'Wells Fargo').saved, 2);
   assert.ok(results.slice(1).every((row) => row.fetched === 3 && row.afterPreFilter === 2 && !row.error));
 });

@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createDatabase } from '../db.js';
-import { workdayConfigs } from '../config/workday.js';
+import { workdayConfigs } from '../config/scrappers.js';
 import { WorkdayScraper } from '../scrapers/workday.js';
 import { rankJob } from '../ranker/index.js';
 

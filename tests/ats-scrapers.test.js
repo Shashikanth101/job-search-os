@@ -9,6 +9,27 @@ import { SmartRecruitersScraper } from '../src/scrapers/smartrecruiters.js';
 import { createScrapers } from '../src/scrapers/index.js';
 import { classifyTitle, isLocationEligible } from '../src/scrapers/pre-filter.js';
 import manualLinks from '../src/config/manual-links.js';
+import { greenhouseConfigs, ashbyConfigs, leverConfigs, smartRecruitersConfigs, workdayConfigs } from '../src/config/scrappers.js';
+
+test('scraper config has no duplicate platform and slug pairs', () => {
+  const configs = [
+    ['greenhouse', greenhouseConfigs], ['ashby', ashbyConfigs], ['lever', leverConfigs],
+    ['smartrecruiters', smartRecruitersConfigs],
+  ];
+  const seen = new Set();
+  for (const [platform, entries] of configs) {
+    for (const entry of entries) {
+      const key = `${platform}:${entry.slug.toLowerCase()}`;
+      assert.equal(seen.has(key), false, `duplicate scraper config: ${key}`);
+      seen.add(key);
+    }
+  }
+  for (const entry of workdayConfigs) {
+    const key = `workday:${new URL(entry.url).host.toLowerCase()}${new URL(entry.url).pathname.toLowerCase()}`;
+    assert.equal(seen.has(key), false, `duplicate scraper config: ${key}`);
+    seen.add(key);
+  }
+});
 
 test('department and location gates reject noise while retaining allowed and ambiguous titles', () => {
   for (const title of ['Account Executive', 'Sr Enterprise Account Exec - Utilities', 'Sales Development Representative', 'Frontend Engineer - Marketing', 'Site Reliability Engineer', 'Data Engineer', 'Recruiter']) {
@@ -163,8 +184,8 @@ test('registry preserves existing sources and keeps only Perplexity Ashby', () =
   process.env.CAREER_PAGES_JSON = '[]';
   try {
     const scrapers = createScrapers({});
-    assert.equal(scrapers.length, 97);
-    assert.equal(new Set(scrapers.map(s => s.source)).size, 97);
+    assert.equal(scrapers.length, 198);
+    assert.equal(new Set(scrapers.map(s => s.source)).size, 198);
     assert.deepEqual(scrapers.filter(s => s.company === 'Perplexity AI').map(s => s.source), ['ashby-perplexity']);
     for (const source of ['greenhouse-razorpaysoftwareprivatelimited', 'greenhouse-groww', 'greenhouse-gleanwork', 'smartrecruiters-PHONEPELIMITED', 'smartrecruiters-Zomato1', 'swiggy-careers']) {
       assert.ok(scrapers.some(s => s.source === source), source);

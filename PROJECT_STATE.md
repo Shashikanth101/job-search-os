@@ -13,10 +13,10 @@ Phase 3's final scope also includes duplicate-job prevention, manual location an
 ### Scrapers and filtering
 
 - Active ATS platforms: Greenhouse, Lever, SmartRecruiters, Ashby, and Workday. Ashby uses the generic scraper in `src/scrapers/ashby.js`; Workday uses `src/scrapers/workday.js` and supports both standard tenant URLs and the `myworkdaysite.com/recruiting` variant.
-- The registry currently has **96 ATS company configurations** (33 Greenhouse, 7 Lever, 7 SmartRecruiters, 30 Ashby, 19 Workday), plus the Swiggy career-page scraper: **97 built-in scrapers**. Optional Firecrawl scrapers can be added through `CAREER_PAGES_JSON`.
+- The registry currently has **197 ATS company configurations** (77 Greenhouse, 12 Lever, 17 SmartRecruiters, 68 Ashby, 23 Workday), plus the Swiggy career-page scraper: **198 built-in scrapers**. Optional Firecrawl scrapers can be added through `CAREER_PAGES_JSON`.
 - The Workday rollout registered Adobe, Arctic Wolf, Barclays, BrowserStack, Cisco, Cloudera, Cohesity, eBay, JioStar, Morgan Stanley, Netflix, NVIDIA, PayPal, PTC, Salesforce, Sprinklr, Visa, Walmart, and Wells Fargo, adding **1,036 jobs** in the initial live run.
 - DexCare (`lever-dexcarehealth`), Hebbia (`ashby-hebbia-ai`), and Gamma (`ashby-gamma`) close gaps from the earlier ATS discovery pass. Gamma retains its supplied Ashby `departmentId`, but the public endpoint currently returns the same unfiltered results with or without that parameter.
-- `src/config/manual-links.js` includes the Lightspeed Venture Partners portfolio board at `https://jobs.lsvp.com` as a discovery-only source. The dashboard also has the completed “Other Companies” section in `uncovered-companies.js` for targets without scraper coverage.
+- `src/config/manual-links.js` includes the Lightspeed Venture Partners portfolio board at `https://jobs.lsvp.com` as a discovery-only source, plus 134 active manual company career links from ATS coverage research (including verification notes and Google searches where URLs need lookup). The dashboard also has the completed “Other Companies” section in `uncovered-companies.js` for targets without scraper coverage.
 - The shared pre-filter in `src/scrapers/pre-filter.js` applies title allow/deny classification and location eligibility for India, Singapore, UAE, Netherlands, UK, and known target cities. Ambiguous remote postings require `hiresRemoteInIndia`; the flag defaults to false because there is no companies table.
 - The last recorded local database snapshot contains 2,472 jobs across 84 companies, including the 1,036 jobs from the initial Workday rollout.
 
@@ -44,6 +44,8 @@ Phase 3's final scope also includes duplicate-job prevention, manual location an
 - **ATS discovery follow-up — IN PROGRESS.** Workday coverage is live, and DexCare, Hebbia, and Gamma were added. The remaining companies from the earlier gap-list check still need individual manual triage using `uncovered-companies.js` under “Other Companies” or into a future scraper.
 
 ## Recent Fixes / Changelog
+
+- Added 96 verified ATS boards across Greenhouse, Ashby, Lever, SmartRecruiters, and Workday, then resolved five held companies as ATS scrapers and two as manual links; 134 active manual links are configured, while Attentive.ai remains pending review.
 
 - Fixed LLM configuration resolution, including ranker environment-prefix handling and provider base-URL selection.
 - Fixed manual-job visibility and URL deduplication; added location and job-type fields and normalized scraped locations through the LLM ranking call.

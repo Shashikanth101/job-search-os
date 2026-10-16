@@ -7,3 +7,4 @@ data/*.db.*
 npm-debug.log*
 resumes/**/*.pdf
 resumes/**/*.tex
+tmp/

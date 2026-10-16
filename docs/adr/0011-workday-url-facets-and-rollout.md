@@ -14,7 +14,7 @@ crawls.
 
 ## Decision
 
-- Store the complete supplied URLs in `src/config/workday.js`. Register their
+- Store the complete supplied URLs in `src/config/scrappers.js`. Register their
   WorkdayScraper instances alongside all existing sources in the active registry.
 - Derive tenant, Workday number, site and facets programmatically with URL and
   URLSearchParams. Support locale prefixes and alternate recruiting URLs.
