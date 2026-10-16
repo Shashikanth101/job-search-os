@@ -18,6 +18,7 @@ Phase 3's final scope also includes duplicate-job prevention, manual location an
 - DexCare (`lever-dexcarehealth`), Hebbia (`ashby-hebbia-ai`), and Gamma (`ashby-gamma`) close gaps from the earlier ATS discovery pass. Gamma retains its supplied Ashby `departmentId`, but the public endpoint currently returns the same unfiltered results with or without that parameter.
 - `src/config/manual-links.js` includes the Lightspeed Venture Partners portfolio board at `https://jobs.lsvp.com` as a discovery-only source, plus 134 active manual company career links from ATS coverage research (including verification notes and Google searches where URLs need lookup). The dashboard also has the completed “Other Companies” section in `uncovered-companies.js` for targets without scraper coverage.
 - The shared pre-filter in `src/scrapers/pre-filter.js` applies title allow/deny classification and location eligibility for India, Singapore, UAE, Netherlands, UK, and known target cities. Ambiguous remote postings require `hiresRemoteInIndia`; the flag defaults to false because there is no companies table.
+- The pre-filter also denies senior leadership titles and descriptions requiring 10+ years of experience (ADR 0012, rules version 2). The verdict is persisted in `jobs.prefilter_*` (migration 004); rejected jobs are hidden from `GET /api/jobs` (`?include_rejected=1` shows them) and skipped by `rerank.js` and `retry-workday-ranking.js`. `src/scripts/reclassify-prefilter.js` (dry run by default; `--apply` backs up first) was applied to the local database: 644 of 3,256 jobs rejected.
 - The last recorded local database snapshot contains 2,472 jobs across 84 companies, including the 1,036 jobs from the initial Workday rollout.
 
 ### Data model and scheduled work
@@ -44,6 +45,8 @@ Phase 3's final scope also includes duplicate-job prevention, manual location an
 - **ATS discovery follow-up — IN PROGRESS.** Workday coverage is live, and DexCare, Hebbia, and Gamma were added. The remaining companies from the earlier gap-list check still need individual manual triage using `uncovered-companies.js` under “Other Companies” or into a future scraper.
 
 ## Recent Fixes / Changelog
+
+- Tightened the pre-filter (seniority titles, 10+ years required), persisted its verdict on `jobs`, hid rejected jobs from the jobs API, and made re-scrapes leave relevance fields untouched. **Open:** 2,044 visible jobs still have a failed ranking, and `BaseScraper.run()` still re-ranks every parsed job on every cron run with no retry cap or circuit breaker (see `tmp/ranking-audit.md`).
 
 - Added 96 verified ATS boards across Greenhouse, Ashby, Lever, SmartRecruiters, and Workday, then resolved five held companies as ATS scrapers and two as manual links; 134 active manual links are configured, while Attentive.ai remains pending review.
 

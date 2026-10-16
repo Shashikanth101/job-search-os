@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS jobs (
   status TEXT NOT NULL DEFAULT 'not_applied'
     CHECK (status IN ('not_applied', 'applied', 'in_process', 'closed')),
   is_new BOOLEAN DEFAULT 1,
+  -- Persisted pre-filter verdict (migration 004); NULL means not yet evaluated.
+  prefilter_status TEXT CHECK (prefilter_status IS NULL OR prefilter_status IN ('passed', 'rejected')),
+  prefilter_reason TEXT,
+  prefilter_version INTEGER,
+  prefilter_checked_at DATETIME,
   UNIQUE(company, job_id)
 );
 

@@ -144,6 +144,9 @@ Internal services (scraper, intelligence layer) write directly to the DB. This A
 **Step 1 — Department/Relevance Pre-Filter (pure code, no LLM)**
 - Title-based allowlist (Frontend Engineer, Full Stack, SDE 2/3, AI Engineer, AI Agents Engineer, Harness Engineer, Forward Deployed Engineer, etc.) → auto-accept
 - Title-based denylist (Sales, Customer Success, Data Engineer, DevOps, SRE, Cloud Infra, Mobile-only, QA, Marketing, Recruiter, etc.) → auto-reject
+- Seniority deny (principal, distinguished, fellow, head of, director, VP/vice president, chief, engineering manager) — "staff" and "lead" stay eligible
+- Years-required deny: job descriptions whose largest stated minimum experience is >= 10 years (see ADR 0012)
+- Verdict persisted on `JOBS` as `prefilter_status` / `prefilter_reason` / `prefilter_version` / `prefilter_checked_at`; rejected jobs are hidden from `GET /api/jobs` unless `?include_rejected=1`, and are never sent to the ranker. Manual jobs are never rejected.
 - Location hard-filter: must be in India or {Singapore, UAE, Netherlands, UK}; ambiguous "Remote" postings included **only if** parent company's `HIRES_REMOTE_IN_INDIA = true`
 - Titles matching neither list fall through to Step 3 for LLM judgment
 

@@ -8,7 +8,8 @@ async function main() {
     const jobs = database.prepare(`
       SELECT id, title, description, company, location, source
       FROM jobs
-      WHERE relevance_score = 0 OR relevance_score IS NULL OR (@all = 1 AND source != 'manual')
+      WHERE (relevance_score = 0 OR relevance_score IS NULL OR (@all = 1 AND source != 'manual'))
+        AND COALESCE(prefilter_status,'passed') != 'rejected'
     `).all({ all: process.argv.includes('--all') ? 1 : 0 });
     const updateJob = database.prepare(`
       UPDATE jobs

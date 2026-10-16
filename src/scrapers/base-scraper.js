@@ -1,5 +1,6 @@
 import { rankJob } from '../ranker/index.js';
 import { normalizeJobType } from '../jobs/fields.js';
+import { PREFILTER_VERSION, evaluateJobRules } from './pre-filter.js';
 
 /**
  * Base contract for every job scraper.
@@ -34,31 +35,33 @@ export class BaseScraper {
   }
 
   /**
-   * Inserts or updates normalized jobs, preserving seen status on updates.
+   * Inserts new jobs (stamping their pre-filter verdict) and refreshes only non-user
+   * metadata of existing rows. A re-scrape never changes prefilter_*, relevance_*,
+   * location (ranker-normalized), status, is_new or resume_path.
    * @param {Array<object>} jobs Normalized jobs.
    * @returns {number} Number of records written.
    */
   saveToDb(jobs) {
     const statement = this.db.prepare(`
-      INSERT INTO jobs (job_id, title, company, location, job_type, description, apply_url, source, posted_at, relevance_score, relevance_reason)
-      VALUES (@job_id, @title, @company, @location, @job_type, @description, @apply_url, @source, @posted_at, @relevance_score, @relevance_reason)
+      INSERT INTO jobs (job_id, title, company, location, job_type, description, apply_url, source, posted_at, relevance_score, relevance_reason,
+        prefilter_status, prefilter_reason, prefilter_version, prefilter_checked_at)
+      VALUES (@job_id, @title, @company, @location, @job_type, @description, @apply_url, @source, @posted_at, @relevance_score, @relevance_reason,
+        'passed', NULL, @prefilter_version, CURRENT_TIMESTAMP)
       ON CONFLICT(company, job_id) DO UPDATE SET
         title = excluded.title,
-        company = excluded.company,
-        location = excluded.location,
         job_type = excluded.job_type,
         description = excluded.description,
         apply_url = excluded.apply_url,
-        source = excluded.source,
-        posted_at = excluded.posted_at,
-        relevance_score = excluded.relevance_score,
-        relevance_reason = excluded.relevance_reason
+        posted_at = excluded.posted_at
     `);
     const existingUrl = this.db.prepare('SELECT id, company, job_id, source FROM jobs WHERE apply_url = ?');
     const existingPosting = this.db.prepare('SELECT id FROM jobs WHERE company = ? AND job_id = ?');
     const saveMany = this.db.transaction((records) => {
       let saved = 0;
       for (const job of records) {
+        const isExistingPosting = existingPosting.get(job.company ?? '', job.job_id ?? job.apply_url);
+        // Scrapers without their own pre-filter (Firecrawl, Swiggy) still never persist rejected jobs.
+        if (!isExistingPosting && !evaluateJobRules({ ...job, source: job.source ?? this.source }).pass) continue;
         const existing = existingUrl.get(job.apply_url ?? null);
         if (existing && (existing.source === 'manual'
           || existing.id !== existingPosting.get(job.company ?? '', job.job_id ?? job.apply_url)?.id)) continue;
@@ -73,7 +76,8 @@ export class BaseScraper {
           source: job.source ?? this.source,
           posted_at: job.posted_at ?? null,
           relevance_score: job.relevance_score == null ? null : Number(job.relevance_score),
-          relevance_reason: job.relevance_reason ?? null
+          relevance_reason: job.relevance_reason ?? null,
+          prefilter_version: PREFILTER_VERSION
         });
         saved += 1;
       }

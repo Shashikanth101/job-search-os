@@ -12,7 +12,7 @@ try {
     const scraper = new WorkdayScraper({ db, ...config });
     return [scraper.source, scraper];
   }));
-  const failed = db.prepare("SELECT * FROM jobs WHERE source LIKE 'workday-%' AND relevance_reason = 'Ranking failed'").all();
+  const failed = db.prepare("SELECT * FROM jobs WHERE source LIKE 'workday-%' AND relevance_reason = 'Ranking failed' AND COALESCE(prefilter_status,'passed') != 'rejected'").all();
   const update = db.prepare("UPDATE jobs SET relevance_score = ?, relevance_reason = ?, location = ? WHERE id = ? AND relevance_reason = 'Ranking failed'");
   let recovered = 0;
   for (let start = 0; start < failed.length; start += 4) {

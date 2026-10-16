@@ -1,4 +1,5 @@
 import { normalizeJobType } from '../jobs/fields.js';
+import { migrateJobPrefilter } from './004-job-prefilter.js';
 
 /** Report exact duplicate posting URLs without changing any rows. */
 export function findDuplicateUrls(db) {
@@ -45,6 +46,8 @@ export function migrateJobConstraints(db) {
       for (const row of rows) update.run(normalizeJobType(row.job_type), row.id);
       db.exec('DROP TABLE jobs; ALTER TABLE jobs_constrained RENAME TO jobs;');
       for (const { sql } of indexes) db.exec(sql);
+      // The rebuild above copies a fixed column list; restore later-added pre-filter columns (values are not carried over).
+      migrateJobPrefilter(db);
       db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_apply_url_unique ON jobs(apply_url)');
       db.prepare("UPDATE sqlite_sequence SET seq=MAX(seq, ?) WHERE name='jobs'").run(sequence);
       if (db.pragma('foreign_key_check').length) throw new Error('Foreign-key validation failed; migration rolled back.');

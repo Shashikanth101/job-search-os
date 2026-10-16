@@ -67,7 +67,8 @@ export function createApp(db) {
   app.get('/api/message-templates', (_req, res) => res.json(messageTemplates));
 
   /**
-   * Lists jobs with optional new, minimum-score, and location filters.
+   * Lists jobs with optional new, minimum-score, and location filters; pre-filter rejected jobs are
+   * hidden unless include_rejected=1.
    * @param {import('express').Request} req Express request.
    * @param {import('express').Response} res Express response.
    * @returns {import('express').Response} JSON response.
@@ -75,6 +76,7 @@ export function createApp(db) {
   app.get('/api/jobs', (req, res) => {
     const clauses = [];
     const params = {};
+    if (!['1', 'true'].includes(String(req.query.include_rejected ?? ''))) clauses.push("COALESCE(prefilter_status, 'passed') != 'rejected'");
     if (req.query.new === 'true') clauses.push('is_new = 1');
     if (req.query.minScore !== undefined) {
       const minScore = Number(req.query.minScore);
