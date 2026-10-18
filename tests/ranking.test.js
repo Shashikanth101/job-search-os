@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { EventEmitter } from 'node:events';
 import Database from 'better-sqlite3';
 import { createApp } from '../src/app.js';
 import { createDatabase } from '../src/db.js';
@@ -11,6 +12,7 @@ import { callLlm, LlmError, setLlmClient } from '../src/llm/index.js';
 import { backfillRankStatus } from '../src/migrations/005-ranking-state.js';
 import { acquireLock } from '../src/locks.js';
 import { rankPending } from '../src/ranker/rank-pending.js';
+import { PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, parseRankOutput } from '../src/ranker/index.js';
 import { BaseScraper } from '../src/scrapers/base-scraper.js';
 import { runScheduledCycle, startScheduler } from '../src/scheduler.js';
 
@@ -312,7 +314,7 @@ test('archetype and seniority_fit are persisted when valid and stored NULL when 
   });
   await rankPending({ db, concurrency: 1, sleep: noSleep });
   assert.deepEqual(db.prepare('SELECT relevance_score, rank_archetype, rank_seniority_fit, rank_prompt_version FROM jobs WHERE id = ?').get(first),
-    { relevance_score: 8, rank_archetype: 'frontend', rank_seniority_fit: 'fit', rank_prompt_version: 4 });
+    { relevance_score: 8, rank_archetype: 'frontend', rank_seniority_fit: 'fit', rank_prompt_version: 5 });
   assert.deepEqual(db.prepare('SELECT relevance_score, rank_archetype, rank_seniority_fit, rank_status FROM jobs WHERE id = ?').get(second),
     { relevance_score: 6, rank_archetype: null, rank_seniority_fit: null, rank_status: 'ranked' });
   db.close();
@@ -346,4 +348,129 @@ test('invalid JSON stores a single-line sample (max 200 chars) in rank_last_erro
   assert.equal(row.rank_last_error.length, 'Model output was not valid JSON: '.length + 200);
   assert.equal(requests[0].maxTokens, 600);
   db.close();
+});
+
+test('JSON extraction: prose or fences around the object, braces inside strings, stray braces, and failures', () => {
+  const ok = '{"score": 6, "reason": "Brace } in { text", "location": null, "archetype": "frontend", "seniority_fit": "fit"}';
+  const cases = [
+    [ok, 6],
+    [`The description is truncated, so I scored from the title.\n${ok}\nHope that helps.`, 6],
+    [`\`\`\`json\n${ok}\n\`\`\``, 6],
+    [`Noted {not json} first. ${ok}`, 6],
+    ['{"score": 3, "reason": "nested ok", "extra": {"a": {"b": 1}}}', 3],
+  ];
+  for (const [text, score] of cases) assert.equal(parseRankOutput(text).score, score, text.slice(0, 40));
+  assert.equal(parseRankOutput(ok).reason, 'Brace } in { text');
+  for (const bad of ['The description is truncated.', '{"score": 7, "reason": "cut off', '', '{"score": 99, "reason": "x"}']) {
+    assert.throws(() => parseRankOutput(bad), RankOutputError, bad);
+  }
+  assert.match(SYSTEM_PROMPT, /Always reply with the JSON object only/);
+});
+
+test('prompt v5 content: employer-based company signal, customer-facing technical roles, new calibration examples', () => {
+  assert.equal(PROMPT_VERSION, 5);
+  for (const phrase of ['judge the employer, not the job title', 'never lower a score because the title contains Consultant',
+    'TCS, Infosys, Accenture, Capgemini, Cognizant, Wipro', 'Score them like FDE roles (7-9 when the stack fits)',
+    'mainly sales support, pre-sales demos, account management, training delivery or project management',
+    'Applied AI Engineer at an AI lab: customer pilots, prototypes, eval suites, code reviews with customer engineers -> 8',
+    'Technical Consultant at a large IT services firm -> 3']) assert.ok(SYSTEM_PROMPT.includes(phrase), phrase);
+  assert.ok(!SYSTEM_PROMPT.includes('IT services, consulting, outsourcing and staffing companies score at most 4.'));
+  assert.ok(SYSTEM_PROMPT.includes('"score": <integer 1-10>') && SYSTEM_PROMPT.includes('NORMALIZED LOCATION'));
+});
+
+function seedRanked(db) {
+  const insert = db.prepare(`INSERT INTO jobs (job_id, title, company, location, description, apply_url, source, rank_status, prefilter_status,
+    relevance_score, relevance_reason, rank_archetype, rank_prompt_version) VALUES (?, ?, 'Acme', 'Bengaluru', 'React', ?, ?, ?, ?, ?, 'old', ?, ?)`);
+  const rows = [
+    // [key, source, rank_status, prefilter, score, archetype, version]
+    ['s9', 'test', 'ranked', 'passed', 9, 'frontend', 4],
+    ['s5', 'test', 'ranked', 'passed', 5, 'backend', 4],
+    ['s3', 'test', 'ranked', 'passed', 3, 'infra', 4],
+    ['s2fde', 'test', 'ranked', 'passed', 2, 'fde_applied_ai', 4],
+    ['s2other', 'test', 'ranked', 'passed', 2, 'other', 4],
+    ['s1', 'test', 'ranked', 'passed', 1, 'backend', 4],
+    ['s8old', 'test', 'ranked', 'passed', 8, 'fullstack', null],
+    ['v5', 'test', 'ranked', 'passed', 9, 'frontend', 5],
+    ['man', 'manual', 'ranked', 'passed', 9, 'frontend', 4],
+    ['rej', 'test', 'skipped', 'rejected', 9, 'frontend', 4],
+  ];
+  const ids = {};
+  rows.forEach(([key, source, status, prefilter, score, archetype, version], index) => {
+    ids[key] = Number(insert.run(key, `Title ${key}`, `https://r/${index}`, source, status, prefilter, score, archetype, version).lastInsertRowid);
+  });
+  return ids;
+}
+
+const eligibleKeys = async (db, options) => {
+  const result = await rankPending({ db, dryRun: true, rerankVersion: 5, ...options });
+  return result;
+};
+
+test('targeted re-rank filter: score OR archetype, manual/rejected/current-version rows excluded, no flags unchanged', async () => {
+  const db = memoryDb();
+  seedRanked(db);
+  const names = (rows) => rows.map((row) => row.job_id).sort();
+  const candidates = (options) => {
+    // Dry run reports counts; read the exact candidate set through the same selection path with a large cap.
+    return eligibleKeys(db, { maxJobs: 1000, ...options });
+  };
+  assert.equal((await candidates({})).eligible, 7, 'no flags: every non-manual, non-rejected row below v5');
+  const both = await candidates({ minScore: 3, archetypes: ['fde_applied_ai'] });
+  assert.equal(both.eligible, 5, 's9, s5, s3, s8old (score >= 3) plus s2fde (archetype)');
+  assert.deepEqual(both.filter, { minScore: 3, archetypes: ['fde_applied_ai'] });
+  assert.equal((await candidates({ minScore: 5 })).eligible, 3, 's9, s5, s8old');
+  assert.equal((await candidates({ archetypes: ['fde_applied_ai', 'infra'] })).eligible, 2, 's3 and s2fde');
+  assert.equal((await candidates({ minScore: 9 })).eligible, 1);
+  assert.ok(both.estimateAllEligible.costTypicalUsd > 0 && both.estimateAllEligible.costMaxUsd >= both.estimateAllEligible.costTypicalUsd);
+  assert.equal(both.estimateAllEligible.model != null, true);
+  await assert.rejects(rankPending({ db, dryRun: true, minScore: 3 }), /only apply together with --rerank-version/);
+  await assert.rejects(rankPending({ db, dryRun: true, rerankVersion: 5, archetypes: ['wizard'] }), /Unknown archetype/);
+  await assert.rejects(rankPending({ db, dryRun: true, rerankVersion: 5, minScore: Number.NaN }), /--min-score must be a number/);
+  db.close();
+});
+
+test('targeted re-rank runs best-score-first, honors the job cap, and never touches rows outside the filter', async (t) => {
+  const db = memoryDb();
+  const ids = seedRanked(db);
+  const before = new Map(db.prepare('SELECT * FROM jobs').all().map((row) => [row.job_id, row]));
+  const order = [];
+  setLlmClient(async ({ user }) => {
+    order.push(user.match(/Title: (Title \w+)/)[1]);
+    return { text: JSON.stringify({ score: 6, reason: 'new', location: 'Bengaluru', archetype: 'frontend', seniority_fit: 'fit' }), usage: { input_tokens: 10, output_tokens: 5 } };
+  });
+  t.after(() => setLlmClient(null));
+
+  const capped = await rankPending({ db, rerankVersion: 5, minScore: 3, archetypes: ['fde_applied_ai'], concurrency: 1, maxJobs: 3, maxUsd: 100, sleep: noSleep, processRef: new EventEmitter(), exit() {} });
+  assert.equal(capped.ranked, 3);
+  assert.deepEqual(order, ['Title s9', 'Title s8old', 'Title s5'], 'highest stored score first');
+  const full = await rankPending({ db, rerankVersion: 5, minScore: 3, archetypes: ['fde_applied_ai'], concurrency: 1, maxUsd: 100, sleep: noSleep, processRef: new EventEmitter(), exit() {} });
+  assert.equal(full.ranked, 2, 'the two remaining candidates (s3, s2fde); already re-ranked rows are v5 now');
+  assert.deepEqual(order.slice(3), ['Title s3', 'Title s2fde']);
+
+  const after = new Map(db.prepare('SELECT * FROM jobs').all().map((row) => [row.job_id, row]));
+  for (const key of ['s2other', 's1', 'v5', 'man', 'rej']) assert.deepEqual(after.get(key), before.get(key), `${key} untouched`);
+  for (const key of ['s9', 's5', 's3', 's2fde', 's8old']) {
+    assert.equal(after.get(key).rank_prompt_version, 5, key);
+    assert.equal(after.get(key).relevance_score, 6, key);
+  }
+  assert.equal(ids.s9 > 0, true);
+  db.close();
+});
+
+test('CLI parses --min-score and --include-archetype for the dry run', async (t) => {
+  const { runRankCli } = await import('../src/scripts/rank.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rankcli-'));
+  const file = path.join(dir, 'jobs.db');
+  const seeded = createDatabase(file);
+  seedRanked(seeded);
+  seeded.close();
+  const previous = process.env.DATABASE_PATH;
+  process.env.DATABASE_PATH = file;
+  t.after(() => { if (previous === undefined) delete process.env.DATABASE_PATH; else process.env.DATABASE_PATH = previous; });
+  const lines = [];
+  t.mock.method(console, 'log', (line) => lines.push(String(line)));
+  const result = await runRankCli(['--rerank-version', '5', '--min-score', '3', '--include-archetype', 'fde_applied_ai,infra']);
+  assert.equal(result.eligible, 5);
+  assert.ok(lines.some((line) => /FILTER .*score >= 3 OR archetype in \[fde_applied_ai, infra\] -> 5 candidates; est cost \$[\d.]+ typical \/ \$[\d.]+ worst case/.test(line)));
+  await assert.rejects(runRankCli(['--rerank-version', '5', '--min-score', 'abc']), /--min-score must be a number/);
 });

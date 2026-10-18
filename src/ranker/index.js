@@ -5,7 +5,7 @@ import { getConfig } from '../config/env.js';
 import { parseNormalizedLocation } from '../jobs/fields.js';
 
 /** Bump when the prompt or output contract changes; stored as jobs.rank_prompt_version. */
-export const PROMPT_VERSION = 4;
+export const PROMPT_VERSION = 5;
 export const ARCHETYPES = ['frontend', 'fullstack', 'fde_applied_ai', 'product_engineer', 'backend', 'data_ml', 'infra', 'other'];
 export const SENIORITY_FITS = ['under', 'fit', 'stretch', 'over'];
 export const DESCRIPTION_CHARS = 1500;
@@ -20,12 +20,13 @@ PROFILE
 - Domains: e-commerce, logistics, B2B SaaS, fintech, internal platforms
 - Target level: SDE 2 / Senior Engineer (Staff is an acceptable stretch)
 - Roles he wants, best first: frontend/React and Next.js; full-stack with React/TypeScript/Node; product or founding engineer; frontend platform; Forward Deployed Engineer, Applied AI or agentic engineer where TypeScript/Node/JavaScript work is central
+- Customer-facing technical roles at product or AI companies (Applied AI, Solutions, Deployed, Forward Deployed, Technical Consultant) are targets when the duties include hands-on building such as prototypes, pilots, integrations, code reviews, evals or agents. Score them like FDE roles (7-9 when the stack fits). Score them 3-4 only when the role is mainly sales support, pre-sales demos, account management, training delivery or project management with no hands-on building.
 
 SCORING (1-10). Weigh role fit, stack fit, level fit and company signal together.
-9-10: Frontend, full-stack (React/TypeScript/Node) or product-engineer role, or an FDE/Applied AI/agentic role where JS/TS is central, at a strong product company or well-funded AI-native startup, right level. Use only when all four fit.
-7-8: Good role fit with one gap: stack partly matches, company signal is moderate, level is a small stretch, or Python is expected alongside TypeScript.
+9-10: Frontend, full-stack (React/TypeScript/Node) or product-engineer role, or an FDE/Applied AI/agentic role where JS/TS is central, at a strong product company or well-funded AI-native startup, right level. Customer-facing technical roles with hands-on building (prototypes, pilots, integrations, evals, agents) count as FDE-like when JS/TS is central. Use only when all four fit.
+7-8: Good role fit with one gap: stack partly matches, company signal is moderate, level is a small stretch, or Python is expected alongside TypeScript. Customer-facing technical roles at product or AI companies (Applied AI, Solutions, Deployed, Forward Deployed, Technical Consultant) with hands-on building score here or higher when the stack fits (7-9).
 5-6: Full-stack leaning backend, frontend at a lesser-known company, applied AI role needing more Python or ML than he has, or a clear level stretch (8-9 years or Staff).
-3-4: IT services, consulting, outsourcing or staffing; vague role; weak frontend/full-stack signal; Python-primary or backend-primary with only a little frontend.
+3-4: Roles at IT services, consulting, outsourcing or staffing firms; customer-facing roles that are mainly sales support, pre-sales demos, account management, training delivery or project management with no hands-on building; vague role; weak frontend/full-stack signal; Python-primary or backend-primary with only a little frontend.
 1-2: Pure backend in Java/Go/C++/Rust, data science or ML research, infra/SRE/DevOps, QA only, native mobile, non-engineering, or the wrong level (intern, entry-level, principal and above).
 Technical writing, documentation, content, recruiting, sales, marketing, finance, legal, compliance and program/product management are non-engineering: score 1-2.
 People-management roles (managing engineers or teams, titles such as Senior Manager or Engineering Manager) are not individual-contributor roles: score 1-2.
@@ -33,7 +34,7 @@ Use the full range. Most jobs should land between 3 and 7.
 
 ADJUSTMENTS (apply after choosing the band; keep the result within 1-10)
 - Required experience: 3-8 years fits. 8-9 years: -1. Entry level or under 2 years: -3.
-- Company signal: IT services, consulting, outsourcing and staffing companies score at most 4.
+- Company signal: judge the employer, not the job title. Only companies whose business is selling IT services, consulting, outsourcing or staffing (for example TCS, Infosys, Accenture, Capgemini, Cognizant, Wipro) score at most 4. A product or AI company hiring a Consultant, Solutions, Deployed, Customer or Applied AI engineer is NOT a services company; never lower a score because the title contains Consultant.
 - Domain: -1 if the core product is EdTech, HealthTech, gaming or real estate.
 - Do not adjust the score for location. A separate filter already checks eligibility.
 
@@ -45,6 +46,8 @@ CALIBRATION EXAMPLES
 - Frontend Developer for client projects at an IT services firm -> 3
 - Senior Python/Django Backend Engineer -> 3
 - Senior Java Backend Engineer -> 1
+- Applied AI Engineer at an AI lab: customer pilots, prototypes, eval suites, code reviews with customer engineers -> 8
+- Technical Consultant at a large IT services firm -> 3
 
 NORMALIZED LOCATION: Use the raw location as authoritative context, with the description as supporting context.
 Return location as exactly one of Bengaluru, Noida, Gurugram, Mumbai, Pune, Hyderabad, Chennai, India,
@@ -54,7 +57,7 @@ Remote - India and Indian cities outside the listed set normalize to India.
 Do not infer India from an unspecified or globally remote location. Return null if the country cannot be determined.
 For multiple countries, return null rather than hiding the ambiguity behind a single city.
 
-OUTPUT: Return ONLY valid JSON, no other text:
+OUTPUT: Return ONLY valid JSON, no other text. Always reply with the JSON object only, even when the description is truncated or thin. If information is missing, score from the title and company and say so in the reason.
 {"score": <integer 1-10>, "reason": "<one sentence, at most 25 words>", "location": "<normalized location or null>", "archetype": "<frontend|fullstack|fde_applied_ai|product_engineer|backend|data_ml|infra|other>", "seniority_fit": "<under|fit|stretch|over>"}
 seniority_fit: under = junior or entry role; fit = 3-8 years; stretch = 8-9 years or Staff; over = principal/director level or 10+ years.`;
 
@@ -86,16 +89,49 @@ export function buildUserMessage(title, description, company, rawLocation = null
 }
 
 /**
+ * Find the first balanced {...} in the reply that parses as JSON (string-aware), ignoring prose or code fences
+ * around it. Later candidates are tried when an earlier balanced block is not valid JSON.
+ * @param {string} raw Model text.
+ * @returns {object|undefined} Parsed object, or undefined when none exists.
+ */
+export function extractJsonObject(raw) {
+  const text = String(raw ?? '');
+  for (let start = text.indexOf('{'); start !== -1; start = text.indexOf('{', start + 1)) {
+    let depth = 0;
+    let inString = false;
+    for (let i = start; i < text.length; i += 1) {
+      const char = text[i];
+      if (inString) {
+        if (char === '\\') i += 1;
+        else if (char === '"') inString = false;
+      } else if (char === '"') {
+        inString = true;
+      } else if (char === '{') {
+        depth += 1;
+      } else if (char === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          try {
+            const parsed = JSON.parse(text.slice(start, i + 1));
+            if (parsed && typeof parsed === 'object') return parsed;
+          } catch { /* try the next candidate */ }
+          break;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Parse and validate the model's JSON answer.
  * @param {string} raw Model text.
  * @returns {{score: number, reason: string, location: string|null, archetype: string|null, seniorityFit: string|null}} Validated ranking; invalid archetype/seniority_fit become null without rejecting the score.
  * @throws {RankOutputError} When the output is not the expected JSON shape.
  */
 export function parseRankOutput(raw) {
-  let parsed;
-  try {
-    parsed = JSON.parse(String(raw).replace(/```json|```/gi, '').trim());
-  } catch {
+  const parsed = extractJsonObject(raw);
+  if (parsed === undefined) {
     // Keep a short, single-line sample of the raw text so the failure can be diagnosed from rank_last_error.
     throw new RankOutputError(`Model output was not valid JSON: ${String(raw).replace(/\s+/g, ' ').trim().slice(0, 200)}`);
   }

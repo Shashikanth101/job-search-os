@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ENV_DEFAULTS, getConfig, validateEnv } from '../src/config/env.js';
+import { ENV_DEFAULTS, ENV_FILE_PATH, getConfig, loadEnvFile, validateEnv } from '../src/config/env.js';
 import { SECRET_NAME, isPlaceholder, looksLikeRealSecret, parseEnvText } from '../src/config/env-file.js';
 import { checkEnv, syncEnv } from '../scripts/env-sync.js';
 
@@ -108,4 +108,50 @@ test('env:check and env:sync report names only, never reorder or overwrite, and 
 test('.gitignore ignores .env and its backups', () => {
   const lines = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8').split(/\r?\n/);
   assert.ok(lines.includes('.env') && lines.includes('.env.bak-*'));
+});
+
+test('.env is authoritative: it overrides pre-set shell values, and only names are logged', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'envload-'));
+  const file = path.join(dir, '.env');
+  fs.writeFileSync(file, 'PORT=4000\nLLM_MODEL=from-file\nLLM_API_KEY="file-secret-sentinel"\nNEW_ONLY_IN_FILE=1\nSAME_VALUE=same\n');
+  const env = { PORT: '1111', LLM_API_KEY: 'shell-secret-sentinel', SAME_VALUE: 'same', UNRELATED: 'keep' };
+  const logs = [];
+  const result = loadEnvFile({ path: file, env, log: (line) => logs.push(line) });
+
+  assert.equal(result.loaded, true);
+  assert.deepEqual(result.overridden, ['PORT', 'LLM_API_KEY']);
+  assert.equal(env.PORT, '4000');
+  assert.equal(env.LLM_API_KEY, 'file-secret-sentinel');
+  assert.equal(env.NEW_ONLY_IN_FILE, '1');
+  assert.equal(env.UNRELATED, 'keep');
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /overrides 2 shell variable\(s\): PORT, LLM_API_KEY/);
+  assert.ok(!logs[0].includes('sentinel') && !logs[0].includes('4000') && !logs[0].includes('1111'), 'no values in the log');
+
+  // Default environment object (process.env) behaves the same way.
+  process.env.ENVLOAD_TEST_VAR = 'shell';
+  fs.writeFileSync(file, 'ENVLOAD_TEST_VAR=file\n');
+  try {
+    assert.deepEqual(loadEnvFile({ path: file, log() {} }).overridden, ['ENVLOAD_TEST_VAR']);
+    assert.equal(process.env.ENVLOAD_TEST_VAR, 'file');
+  } finally {
+    delete process.env.ENVLOAD_TEST_VAR;
+  }
+});
+
+test('a missing .env changes nothing and logs nothing', () => {
+  const env = { PORT: '1111' };
+  const logs = [];
+  const result = loadEnvFile({ path: path.join(os.tmpdir(), 'definitely-missing-dir', '.env'), env, log: (line) => logs.push(line) });
+  assert.deepEqual(result, { loaded: false, overridden: [] });
+  assert.deepEqual(env, { PORT: '1111' });
+  assert.deepEqual(logs, []);
+});
+
+test('the real project .env is never loaded during tests', () => {
+  const before = { ...process.env };
+  const result = loadEnvFile({ log() {} });
+  assert.deepEqual(result, { loaded: false, overridden: [], skipped: 'test' });
+  assert.deepEqual({ ...process.env }, before);
+  assert.ok(ENV_FILE_PATH.endsWith('.env'));
 });

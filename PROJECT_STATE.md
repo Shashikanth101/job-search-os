@@ -46,6 +46,8 @@ Phase 3's final scope also includes duplicate-job prevention, manual location an
 
 ## Recent Fixes / Changelog
 
+- Made `.env` authoritative: `loadEnvFile()` (src/config/env.js, called by `src/config/load-env.js`) overrides shell variables with `.env` values, does nothing when `.env` is absent, never loads the real `.env` under tests, and logs one line with the names of overridden variables.
+
 - Graceful ranker shutdown (ADR 0016): Ctrl+C/SIGTERM/SIGHUP drains in-flight calls (≤15 s), leaves aborted jobs `pending`, releases the `rank` lock (owner-checked) and exits 130/143/129; a second signal exits at once. `app_locks` now records pid/hostname (migration 007) so a lock left by a dead process on the same host is reclaimed automatically.
 
 - Centralized env handling: `.env.example` is the canonical variable list; all reads go through `src/config/env.js` (defaults match the example, placeholder secrets count as unset, startup warns by name and fails when `LLM_API_KEY` is required). Added `npm run env:check` / `env:sync` (`scripts/env-sync.js`, names only, backs up `.env` to a gitignored `.env.bak-*`) and `tests/env.test.js`.

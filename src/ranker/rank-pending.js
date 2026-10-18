@@ -6,7 +6,7 @@ import { dailySpendUsd } from '../llm/usage.js';
 import { acquireLock, releaseLock } from '../locks.js';
 import { getRankConfig, RANK_LOCK_NAME, RANK_LOCK_TTL_MS, BREAKER_CONSECUTIVE_FAILURES, IN_RUN_RETRIES } from './config.js';
 import { getConfig } from '../config/env.js';
-import { PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, buildUserMessage, rankJob } from './index.js';
+import { ARCHETYPES, PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, buildUserMessage, rankJob } from './index.js';
 
 const PENDING_OR_RETRYABLE = `COALESCE(prefilter_status, 'passed') != 'rejected' AND (
   rank_status = 'pending'
@@ -20,12 +20,36 @@ const SIGNAL_EXIT_CODES = { SIGINT: 130, SIGTERM: 143, SIGHUP: 129 };
 const jitter = (ms) => ms + Math.random() * 500;
 const backoffMs = (attempt) => jitter(Math.min(8000, 1000 * 2 ** attempt));
 
-function selectJobs(db, { maxAttempts, rerankVersion, sourcePrefix, limit }) {
-  const where = rerankVersion ? RERANK : PENDING_OR_RETRYABLE;
-  const params = { maxAttempts, now: new Date().toISOString(), limit, prefix: `${sourcePrefix ?? ''}%` };
+/**
+ * Build the candidate WHERE clause and bind parameters. With a re-rank, the optional targeted filter keeps rows whose
+ * stored score is >= minScore OR whose archetype is in the list (either condition alone when only one is given).
+ */
+function candidateQuery({ maxAttempts, rerankVersion, sourcePrefix, minScore, archetypes }) {
+  const params = { maxAttempts, now: new Date().toISOString(), prefix: `${sourcePrefix ?? ''}%` };
+  let where = rerankVersion ? RERANK : PENDING_OR_RETRYABLE;
+  const filtered = Boolean(rerankVersion) && (minScore != null || archetypes?.length > 0);
   if (rerankVersion) params.rerankVersion = rerankVersion;
+  if (filtered) {
+    const conditions = [];
+    if (minScore != null) {
+      conditions.push('relevance_score >= @minScore');
+      params.minScore = minScore;
+    }
+    if (archetypes?.length) {
+      conditions.push(`rank_archetype IN (${archetypes.map((_, index) => `@archetype${index}`).join(', ')})`);
+      archetypes.forEach((archetype, index) => { params[`archetype${index}`] = archetype; });
+    }
+    where += ` AND (${conditions.join(' OR ')})`;
+  }
+  return { where: `${where} AND source LIKE @prefix`, params, filtered };
+}
+
+function selectJobs(db, options) {
+  const { where, params, filtered } = candidateQuery(options);
+  // A filtered re-rank is ordered best-score-first so a budget or job-cap stop loses the least important jobs.
+  const order = filtered ? 'relevance_score DESC, id' : "(rank_status = 'pending') DESC, found_at DESC, id";
   return db.prepare(`SELECT id, title, company, location, description, source, rank_status FROM jobs
-    WHERE ${where} AND source LIKE @prefix ORDER BY (rank_status = 'pending') DESC, found_at DESC, id LIMIT @limit`).all(params);
+    WHERE ${where} ORDER BY ${order} LIMIT @limit`).all({ ...params, limit: options.limit });
 }
 
 /**
@@ -116,6 +140,8 @@ function estimate(jobs, model) {
  * @param {string} [options.runId] Ledger run id.
  * @param {boolean} [options.dryRun] Count and estimate only; no lock, no LLM call.
  * @param {number} [options.rerankVersion] Re-rank ranked jobs whose rank_prompt_version is below this (must be <= PROMPT_VERSION).
+ * @param {number} [options.minScore] With rerankVersion: keep rows whose score is >= this (OR-ed with archetypes).
+ * @param {string[]} [options.archetypes] With rerankVersion: keep rows whose rank_archetype is in this list.
  * @param {string} [options.sourcePrefix] Restrict to sources starting with this prefix.
  * @param {(ms: number) => Promise<void>} [options.sleep] Backoff sleeper.
  * @param {number} [options.drainMs] After SIGINT/SIGTERM/SIGHUP, how long in-flight calls may finish before they are aborted.
@@ -123,7 +149,7 @@ function estimate(jobs, model) {
  * @param {(code: number) => void} [options.exit] Called with 130/143/129 after a signal-driven shutdown (injectable for tests).
  * @returns {Promise<object>} Run summary.
  */
-export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = randomUUID(), dryRun = false, rerankVersion, sourcePrefix, sleep, drainMs = DRAIN_MS, processRef = process, exit = (code) => process.exit(code) } = {}) {
+export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = randomUUID(), dryRun = false, rerankVersion, minScore, archetypes, sourcePrefix, sleep, drainMs = DRAIN_MS, processRef = process, exit = (code) => process.exit(code) } = {}) {
   const config = getRankConfig();
   const caps = {
     maxJobs: maxJobs ?? config.maxJobs,
@@ -131,6 +157,11 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
     concurrency: Math.max(1, concurrency ?? config.concurrency),
     maxAttempts: config.maxAttempts,
   };
+  const hasFilter = minScore != null || archetypes?.length > 0;
+  if (hasFilter && !rerankVersion) throw new Error('--min-score and --include-archetype only apply together with --rerank-version.');
+  if (minScore != null && !Number.isFinite(minScore)) throw new Error('--min-score must be a number.');
+  const unknown = (archetypes ?? []).filter((archetype) => !ARCHETYPES.includes(archetype));
+  if (unknown.length) throw new Error(`Unknown archetype(s): ${unknown.join(', ')}. Valid: ${ARCHETYPES.join(', ')}.`);
   if (rerankVersion && rerankVersion > PROMPT_VERSION) throw new Error(`--rerank-version ${rerankVersion} exceeds the current PROMPT_VERSION ${PROMPT_VERSION}.`);
   const summary = { runId, dryRun, caps, selected: 0, ranked: 0, failed: 0, infra: 0, calls: 0, interrupted: 0, aborted: false, abortReason: null, skipped: null, maxConcurrent: 0 };
   const model = resolveModel();
@@ -144,15 +175,15 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
       SUM(rank_status = 'failed' AND rank_attempts >= @maxAttempts) AS failedExhausted,
       SUM(rank_status IS NULL) AS notBackfilled
       FROM jobs WHERE source LIKE @prefix`).get({ maxAttempts: caps.maxAttempts, now, prefix: `${sourcePrefix ?? ''}%` });
-    const jobs = selectJobs(db, { ...caps, rerankVersion, sourcePrefix, limit: caps.maxJobs });
-    const eligible = db.prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${rerankVersion ? RERANK : PENDING_OR_RETRYABLE} AND source LIKE @prefix`)
-      .get({ maxAttempts: caps.maxAttempts, now, prefix: `${sourcePrefix ?? ''}%`, ...(rerankVersion && { rerankVersion }) }).n;
+    const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: caps.maxJobs });
+    const { where, params } = candidateQuery({ ...caps, rerankVersion, minScore, archetypes, sourcePrefix });
+    const eligible = db.prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where}`).get(params).n;
     const spentToday = dailySpendUsd(db);
     const forRun = estimate(jobs, model);
     const perJob = jobs.length ? forRun.costMaxUsd / jobs.length : 0;
     return { ...summary, counts, eligible, selected: jobs.length, spentTodayUsd: spentToday, budgetRemainingUsd: Math.max(0, caps.dailyBudgetUsd - spentToday),
       budgetAffordableJobs: perJob ? Math.floor(Math.max(0, caps.dailyBudgetUsd - spentToday) / perJob) : null,
-      estimateThisRun: forRun, estimateAllEligible: estimate(selectJobs(db, { ...caps, rerankVersion, sourcePrefix, limit: 1_000_000 }), model),
+      filter: hasFilter ? { minScore: minScore ?? null, archetypes: archetypes ?? [] } : null, estimateThisRun: forRun, estimateAllEligible: estimate(selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: 1_000_000 }), model),
       disabled: config.disabled };
   }
 
@@ -190,7 +221,7 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
   for (const [name, handler] of handlers) processRef.on(name, handler);
 
   try {
-    const jobs = selectJobs(db, { ...caps, rerankVersion, sourcePrefix, limit: caps.maxJobs });
+    const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: caps.maxJobs });
     summary.selected = jobs.length;
     const perCall = estimateCostUsd(model, 1500, getConfig().rank.maxTokens);
     let next = 0;

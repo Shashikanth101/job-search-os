@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
@@ -38,13 +39,26 @@ export const ENV_DEFAULTS = {
 };
 
 /**
- * Load .env from the project root. Entry points call this (via load-env.js); it is skipped under
- * tests so a developer's real keys can never reach a test run.
- * @returns {boolean} True when a file was loaded.
+ * Load .env so that it is authoritative: its values override variables already set in the shell. A missing .env
+ * (for example in a hosted deployment) changes nothing, so real environment variables apply. The real project
+ * .env is never loaded under tests; tests may pass an explicit temp `path` to exercise the loader.
+ * @param {object} [options] Options.
+ * @param {string} [options.path] Env file to load (defaults to the project .env).
+ * @param {NodeJS.ProcessEnv} [options.env] Environment to update (defaults to process.env).
+ * @param {(message: string) => void} [options.log] Logger for the one-line override notice.
+ * @returns {{loaded: boolean, overridden: string[], skipped?: string}} Names (never values) of variables whose shell value was overridden.
  */
-export function loadEnvFile() {
-  if (process.env.NODE_ENV === 'test' || process.env.NODE_TEST_CONTEXT) return false;
-  return !dotenv.config({ path: ENV_FILE_PATH }).error;
+export function loadEnvFile({ path: envPath, env = process.env, log = console.log } = {}) {
+  if (envPath === undefined && (process.env.NODE_ENV === 'test' || process.env.NODE_TEST_CONTEXT)) {
+    return { loaded: false, overridden: [], skipped: 'test' };
+  }
+  const file = envPath ?? ENV_FILE_PATH;
+  if (!fs.existsSync(file)) return { loaded: false, overridden: [] };
+  const values = dotenv.parse(fs.readFileSync(file));
+  const overridden = Object.keys(values).filter((name) => env[name] !== undefined && env[name] !== values[name]);
+  Object.assign(env, values);
+  if (overridden.length) log(`[Config] .env overrides ${overridden.length} shell variable(s): ${overridden.join(', ')}`);
+  return { loaded: true, overridden };
 }
 
 function read(env, name) {

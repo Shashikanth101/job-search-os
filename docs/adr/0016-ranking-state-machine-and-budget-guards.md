@@ -56,6 +56,26 @@ no retry limit, budget cap, lock, circuit breaker or usage record, and concurren
 - **Stale lock recovery:** `app_locks` stores `pid` and `hostname` (migration 007). An unexpired lock is
   reclaimed only when its hostname matches this machine and its pid is dead (`process.kill(pid, 0)` → ESRCH);
   a live pid, another host, or a legacy lock without a pid is respected until its 2 h TTL expires.
+- **Prompt v5:** the company-signal rule judges the employer, not the title (only IT services, consulting,
+  outsourcing and staffing businesses are capped at 4; a Consultant/Solutions/Deployed title at a product or AI
+  company is never penalized); customer-facing technical roles with hands-on building are scored like FDE roles
+  (7-9) and 3-4 only when they are mainly sales support, pre-sales, account management, training or project
+  management; two calibration examples were added; and the prompt demands a JSON-only reply even for thin
+  descriptions. The parser extracts the first balanced, string-aware `{...}` that parses (prose or fences around
+  it, stray braces and nested objects are tolerated), so prose-wrapped answers no longer fail. Re-ranking old
+  scores is an explicit `--rerank-version 5 --run`.
+- **Targeted re-rank:** with `--rerank-version N`, `--min-score S` and/or `--include-archetype A[,B]` restrict the
+  candidates (ranked below version N, not manual, not rejected) to rows whose stored score is >= S OR whose
+  `rank_archetype` is in the list (either condition alone when only one flag is given). Filtered candidates are
+  ordered by stored score descending, so a job cap or budget stop loses the least important jobs; without the
+  flags the order and selection are unchanged. The flags are rejected without `--rerank-version`, unknown
+  archetypes are rejected, and the dry-run header prints the active filter, candidate count and typical/worst-case
+  cost. Rows outside the filter are never selected, so a run cannot modify them.
+- **`.env` is authoritative:** `src/config/load-env.js` loads the project `.env` by explicit path and its values
+  override variables already set in the shell (this removes the "stale exported variable silently wins" class of
+  bug). A missing `.env` (hosted deployments) changes nothing, so real environment variables apply. Startup logs one
+  line naming (never valuing) the shell variables that were overridden. The real `.env` is never loaded under
+  tests; tests pass an explicit temp path to the loader.
 - Unranked jobs have a NULL score everywhere (never 0), sort last and display as "Not ranked yet".
 
 ## Consequences

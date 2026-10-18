@@ -12,6 +12,10 @@ function printDryRun(result) {
   const { counts, caps: rawCaps, estimateThisRun: run, estimateAllEligible: all } = result;
   const caps = { ...rawCaps, maxJobsSource: process.env.RANK_MAX_JOBS_PER_RUN ? 'from .env/environment' : 'code default' };
   console.log(`[Rank] DRY RUN (no LLM calls). Pass --run to rank. Prompt version ${PROMPT_VERSION}, model ${run.model}, RANK_MAX_JOBS_PER_RUN=${caps.maxJobs} (${caps.maxJobsSource}).`);
+  if (result.filter) {
+    const parts = [result.filter.minScore != null && `score >= ${result.filter.minScore}`, result.filter.archetypes.length && `archetype in [${result.filter.archetypes.join(', ')}]`].filter(Boolean);
+    console.log(`  FILTER (targeted re-rank, ordered by score desc): ${parts.join(' OR ')} -> ${result.eligible} candidates; est cost ${usd(all.costTypicalUsd)} typical / ${usd(all.costMaxUsd)} worst case (all candidates)`);
+  }
   console.log(`  rank_status pending=${counts.pending ?? 0}  failed(retryable now)=${counts.failedRetryable ?? 0}  failed(waiting backoff)=${counts.failedWaiting ?? 0}  failed(exhausted)=${counts.failedExhausted ?? 0}  not backfilled=${counts.notBackfilled ?? 0}`);
   console.log(`  eligible now: ${result.eligible}; this run would rank ${result.selected} (cap RANK_MAX_JOBS_PER_RUN=${caps.maxJobs})`);
   console.log(`  this run: ~${run.inputTokens} input tokens, ~${run.outputTokensTypical} output (typical) / ${run.outputTokensMax} (max); est cost ${usd(run.costTypicalUsd)} typical, ${usd(run.costMaxUsd)} worst case`);
@@ -31,8 +35,11 @@ export async function runRankCli(args, { sourcePrefix } = {}) {
     ?? (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
   const limit = valueOf('--limit');
   const rerankVersion = valueOf('--rerank-version');
+  const minScoreArg = valueOf('--min-score');
+  const archetypeArg = valueOf('--include-archetype');
   if (limit !== undefined && !(Number(limit) > 0)) throw new Error('--limit must be a positive number.');
   if (rerankVersion !== undefined && !(Number(rerankVersion) > 0)) throw new Error('--rerank-version must be a positive number.');
+  if (minScoreArg !== undefined && !Number.isFinite(Number(minScoreArg))) throw new Error('--min-score must be a number.');
   assertEnv({ requireLlm: args.includes('--run') });
   const db = createDatabase();
   try {
@@ -41,6 +48,8 @@ export async function runRankCli(args, { sourcePrefix } = {}) {
       dryRun: !args.includes('--run'),
       maxJobs: limit === undefined ? undefined : Number(limit),
       rerankVersion: rerankVersion === undefined ? undefined : Number(rerankVersion),
+      minScore: minScoreArg === undefined ? undefined : Number(minScoreArg),
+      archetypes: archetypeArg === undefined ? undefined : archetypeArg.split(',').map((value) => value.trim()).filter(Boolean),
       sourcePrefix,
     });
     if (result.dryRun) printDryRun(result);
