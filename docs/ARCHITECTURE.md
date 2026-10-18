@@ -155,11 +155,12 @@ Internal services (scraper, intelligence layer) write directly to the DB. This A
 - Input: company name, industry, scale, career-goals/target-profile context
 - Output: `RELEVANCY_SCORE (1–10)`, stored permanently; recomputed only via manual `rescan-relevancy` trigger
 
-**Step 3 — Job Relevancy Scorer (LLM, batched by ambiguity + company)**
+**Step 3 — Job Relevancy Scorer (LLM, one fresh request per job, decoupled from scraping)**
 - Runs on: (a) jobs that passed the allowlist but still need a frontend-fit score, and (b) ambiguous jobs that didn't clearly match allow/deny in Step 1
-- Batched per company per scraper run, not per individual job
+- Scrapers never call the LLM: they insert jobs with `rank_status = 'pending'` and a NULL score. `rankPending()` (`src/ranker/rank-pending.js`) runs after the scrapers in the cron cycle and via `npm run rank` (dry run unless `--run`), one independent request per job, no batching, under a kill switch, run lock, per-run job cap, daily USD budget, bounded concurrency and a circuit breaker (see ADR 0016). A ranked job is never re-ranked automatically.
 - **Computed fully independently of company score** — no cross-contamination, to avoid halo effects biasing job-level fit judgments
-- Output: `RELEVANCY_SCORE (1–10)` + `RELEVANCY_REASON`, persisted on the job row
+- Output: `RELEVANCY_SCORE (1–10)` + `RELEVANCY_REASON`, persisted on the job row with `rank_status`, `rank_model`, `rank_prompt_version`, `rank_input_hash`, `ranked_at`. Unranked jobs have a NULL score (never a fake 0) and display as "Not ranked yet".
+- Every LLM call is logged to the `llm_usage` ledger (estimated cost); concurrent runs are prevented by the `app_locks` table.
 
 **Step 4 — Resume Generator** (existing, `job-search-os`)
 - Input: job description + curated bullet pool

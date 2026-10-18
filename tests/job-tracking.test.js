@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import { createApp } from '../src/app.js';
 import { migrateJobConstraints } from '../src/migrations/001-job-constraints.js';
+import { rankPending } from '../src/ranker/rank-pending.js';
+import { setLlmClient } from '../src/llm/index.js';
 import { GreenhouseScraper } from '../src/scrapers/greenhouse.js';
 import { INDIAN_LOCATIONS, JOB_TYPES } from '../src/jobs/fields.js';
 
@@ -62,9 +64,10 @@ test('manual API persists all choices, stays visible, and handles duplicate prec
   migrateJobConstraints(db);
   const app = createApp(db);
   let calls = 0;
-  t.mock.method(globalThis, 'fetch', async () => {
+  t.after(() => setLlmClient(null));
+  setLlmClient(async () => {
     calls++;
-    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ score: 2, reason: 'Unrelated role', location: 'India' }) } }] }) };
+    return { text: JSON.stringify({ score: 2, reason: 'Unrelated role', location: 'India' }), usage: { input_tokens: 10, output_tokens: 5 } };
   });
   let index = 0;
   for (const location of [...INDIAN_LOCATIONS, 'United Kingdom']) {
@@ -102,17 +105,21 @@ test('scraper sends raw context once per job, stores normalized locations, and s
   const expected = ['Bengaluru', 'Bengaluru', 'Bengaluru', 'India', 'United Kingdom'];
   let calls = 0;
   t.mock.method(scraper, 'scrape', async () => ({ jobs: samples.map((location, index) => ({ id: index + 1, title: 'Frontend Engineer', location: { name: location }, content: 'React', absolute_url: `https://example.com/${index}` })) }));
-  t.mock.method(globalThis, 'fetch', async (_url, options) => {
-    const prompt = JSON.parse(options.body).messages[1].content;
+  t.after(() => setLlmClient(null));
+  setLlmClient(async ({ user: prompt }) => {
     const index = samples.findIndex((sample) => prompt.includes(`Raw location: ${sample}\n`));
     assert.ok(index >= 0);
     calls++;
-    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ score: 8, reason: 'Relevant', location: expected[index] }) } }] }) };
+    return { text: JSON.stringify({ score: 8, reason: 'Relevant', location: expected[index] }), usage: { input_tokens: 10, output_tokens: 5 } };
   });
   assert.equal(await scraper.run(), 5);
+  assert.equal(calls, 0, 'scraping makes no LLM calls');
+  await rankPending({ db });
   assert.equal(calls, 5);
   assert.deepEqual(db.prepare('SELECT location FROM jobs ORDER BY id').all().map((row) => row.location), expected);
   assert.equal(await scraper.run(), 5); // Numeric ATS IDs must update their TEXT DB keys.
+  await rankPending({ db });
+  assert.equal(calls, 5, 're-scrape plus rank does not re-rank ranked jobs');
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM jobs').get().count, 5);
   db.exec("UPDATE jobs SET source='manual' WHERE id=1");
   assert.equal(await scraper.run(), 4);

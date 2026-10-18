@@ -1,9 +1,28 @@
 import cron from 'node-cron';
 import { runAllScrapers } from './scrapers/index.js';
+import { rankPending } from './ranker/rank-pending.js';
 
 export const SCRAPER_SCHEDULE = '0 9,18 * * *';
 export const STALE_JOB_CLOSE_SCHEDULE = '0 9 * * 1';
 const SCHEDULE_OPTIONS = { timezone: 'Asia/Kolkata' };
+
+/**
+ * Scheduled cycle: scrape (no LLM), then rank pending jobs under the env-configured caps.
+ * Ranking errors never crash the cron process.
+ * @param {import('better-sqlite3').Database} db Database connection.
+ * @param {{scrape?: Function, rank?: Function}} [steps] Injectable steps for tests.
+ * @returns {Promise<{scrape: unknown, rank: unknown}>} Results.
+ */
+export async function runScheduledCycle(db, { scrape = runAllScrapers, rank = rankPending } = {}) {
+  const scraped = await scrape(db);
+  let ranked;
+  try {
+    ranked = await rank({ db });
+  } catch (error) {
+    console.error(`[Scheduler] Ranking run failed: ${error.message}`);
+  }
+  return { scrape: scraped, rank: ranked };
+}
 
 /** Close applied jobs whose latest recorded applied date is more than 75 days old.
  * @param {import('better-sqlite3').Database} db Database connection.
@@ -34,7 +53,7 @@ export function closeStaleAppliedJobs(db) {
  * @returns {{ scraperTask: import('node-cron').ScheduledTask, staleJobCloseTask: import('node-cron').ScheduledTask }} Scheduled tasks.
  */
 export function startScheduler(db, scheduler = cron) {
-  const scraperTask = scheduler.schedule(SCRAPER_SCHEDULE, () => runAllScrapers(db), SCHEDULE_OPTIONS);
+  const scraperTask = scheduler.schedule(SCRAPER_SCHEDULE, () => runScheduledCycle(db), SCHEDULE_OPTIONS);
   const staleJobCloseTask = scheduler.schedule(STALE_JOB_CLOSE_SCHEDULE, () => {
     try {
       closeStaleAppliedJobs(db);

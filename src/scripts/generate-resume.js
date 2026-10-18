@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../config/load-env.js';
 import { createDatabase } from '../db.js';
 import { compileResume } from '../resume/compiler.js';
 import { generateResume } from '../resume/generator.js';

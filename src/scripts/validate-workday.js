@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../config/load-env.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Database from 'better-sqlite3';

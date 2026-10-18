@@ -133,7 +133,7 @@ export class WorkdayScraper extends BaseScraper {
       offset += page.jobPostings.length;
     } while (offset < total);
 
-    const candidates = jobPostings.filter((job) => classifyTitle(job.title) !== 'deny');
+    const candidates = jobPostings.filter((job) => classifyTitle(job.title, { company: this.company }) !== 'deny');
     const jobs = [];
     let detailFailures = 0;
     // Four requests at a time; ambiguous/multiple locations must be resolved, never guessed.

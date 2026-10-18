@@ -1,8 +1,9 @@
-import 'dotenv/config';
+import '../config/load-env.js';
 import Database from 'better-sqlite3';
+import { getConfig } from '../config/env.js';
 import { findDuplicateUrls, migrateJobConstraints } from '../migrations/001-job-constraints.js';
 
-const db = new Database(process.env.DATABASE_PATH || './data/jobs.db', { fileMustExist: true });
+const db = new Database(getConfig().databasePath, { fileMustExist: true });
 try {
   const duplicates = findDuplicateUrls(db);
   console.log('[Migration] Duplicate URLs:', JSON.stringify(duplicates, null, 2));

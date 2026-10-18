@@ -8,6 +8,8 @@ import { LeverScraper } from '../src/scrapers/lever.js';
 import { SmartRecruitersScraper } from '../src/scrapers/smartrecruiters.js';
 import { createScrapers } from '../src/scrapers/index.js';
 import { classifyTitle, isLocationEligible } from '../src/scrapers/pre-filter.js';
+import { rankPending } from '../src/ranker/rank-pending.js';
+import { setLlmClient } from '../src/llm/index.js';
 import manualLinks from '../src/config/manual-links.js';
 import { greenhouseConfigs, ashbyConfigs, leverConfigs, smartRecruitersConfigs, workdayConfigs } from '../src/config/scrappers.js';
 
@@ -95,7 +97,7 @@ test('all four ATS parsers reject Account Executives and US-only engineers befor
   }
 });
 
-test('Ashby public jobs are fetched, ranked, persisted, and updated without duplicates', async (t) => {
+test('Ashby public jobs are fetched and persisted pending with no LLM call; ranking is a separate step', async (t) => {
   const db = new Database(':memory:');
   t.after(() => db.close());
   db.exec(readFileSync(new URL('../src/schema.sql', import.meta.url), 'utf8'));
@@ -109,15 +111,24 @@ test('Ashby public jobs are fetched, ranked, persisted, and updated without dupl
         applyUrl: 'https://example.com/apply', jobUrl: 'https://example.com/job', publishedAt: '2026-09-01T00:00:00Z',
       }] }) };
     }
+    throw new Error(`unexpected fetch ${url}`);
+  });
+  t.after(() => setLlmClient(null));
+  setLlmClient(async () => {
     rankingCalls += 1;
-    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ score: 9, reason: 'Frontend fit', location: 'Bengaluru' }) } }] }) };
+    return { text: JSON.stringify({ score: 9, reason: 'Frontend fit', location: 'Bengaluru' }), usage: { input_tokens: 100, output_tokens: 20 } };
   });
   assert.equal(await scraper.run(), 1);
   assert.equal(await scraper.run(), 1);
-  assert.equal(rankingCalls, 2);
-  assert.deepEqual(db.prepare('SELECT job_id, source, apply_url, relevance_score FROM jobs').all(), [{
-    job_id: 'ashby-1', source: 'ashby-test', apply_url: 'https://example.com/apply', relevance_score: 9,
+  assert.equal(rankingCalls, 0);
+  assert.deepEqual(db.prepare('SELECT job_id, source, apply_url, relevance_score, rank_status FROM jobs').all(), [{
+    job_id: 'ashby-1', source: 'ashby-test', apply_url: 'https://example.com/apply', relevance_score: null, rank_status: 'pending',
   }]);
+  await rankPending({ db });
+  await scraper.run();
+  await rankPending({ db });
+  assert.equal(rankingCalls, 1);
+  assert.deepEqual(db.prepare('SELECT relevance_score, rank_status FROM jobs').get(), { relevance_score: 9, rank_status: 'ranked' });
 });
 
 test('Ashby rejects HTTP/schema failures and does not invent an India location', async (t) => {

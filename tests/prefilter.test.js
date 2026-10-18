@@ -174,3 +174,45 @@ test('reclassify: dry run writes nothing, apply is idempotent and protects rows'
   assert.match(fs.readFileSync(path.join(out, 'prefilter-reclassify-report.md'), 'utf8'), /Rollback SQL/);
   assert.equal(new Database(file, { readonly: true }).prepare('SELECT COUNT(*) AS n FROM jobs').get().n, 7);
 });
+
+test('v3 non-engineering and wrong-level title keywords', () => {
+  const denied = [
+    ['Software Engineering Intern', 'intern'], ['Frontend Engineer Intern', 'intern'], ['Summer Internship 2026', 'internship'], ['New Grad Software Engineer', 'new grad'],
+    ['Graduate Program - Engineering', 'graduate program'], ['Apprentice Developer', 'apprentice'], ['Student Ambassador', 'student'], ['Business Analyst', 'analyst'],
+    ['Product Manager II', 'product manager'], ['Technical Program Manager', 'program manager'], ['Revenue Operations Lead', 'revenue operations'],
+    ['Paralegal', 'paralegal'], ['Compliance Associate', 'compliance'], ['Mainframe Engineer', 'mainframe'], ['Network Engineer - NOC', 'network engineer'],
+    ['Systems Operations Engineer', 'systems operations'],
+    ['Senior Manager, Platform', 'senior manager'], ['Sr. Manager Growth', 'sr. manager'], ['Sr Manager - Payments', 'sr manager'],
+    ['Development Manager, Web', 'development manager'], ['Account Executive, Enterprise', null],
+  ];
+  for (const [title, keyword] of denied) {
+    const verdict = classifyTitleWithReason(title);
+    assert.equal(verdict.classification, 'deny', title);
+    if (keyword) assert.deepEqual([verdict.reason, verdict.keyword], ['non_engineering_title', keyword], title);
+  }
+  const kept = ['Internal Tools Engineer', 'Developer Advocate', 'Solutions Engineer', 'Analytics Engineer', 'International Payments Engineer', 'Studio Engineer',
+    'Frontend Engineer', 'Staff Frontend Engineer', 'Full Stack Engineer', 'Network Engineering Manager Tools',
+    'Compliance Engineer - APAC', 'Senior Compliance Engineer', 'Senior Software Engineer', 'Staff Software Engineer', 'Lead Frontend Engineer',
+    'Senior Management Systems Engineer', 'Software Development Engineer'];
+  for (const title of kept) assert.notEqual(classifyTitleWithReason(title).reason, 'non_engineering_title', title);
+  assert.equal(classifyTitleWithReason('Compliance Analyst').keyword, 'compliance', 'only the exact "compliance engineer" phrase is carved out');
+  assert.deepEqual(evaluateJobRules({ title: 'Product Manager', source: 'manual' }), { pass: true, reason: null });
+  assert.deepEqual(classifyTitleWithReason('Software Engineering Manager'), { classification: 'deny', reason: 'seniority_title' }, 'already covered by the engineering manager rule');
+  assert.deepEqual(classifyTitleWithReason('Principal Engineer'), { classification: 'deny', reason: 'seniority_title' }, 'seniority behavior unchanged');
+  for (const title of ['Staff Software Engineer', 'Lead Frontend Engineer']) assert.equal(classifyTitle(title), title.startsWith('Staff') ? 'allow' : 'allow', title);
+  // Morgan Stanley grade titles: only the three "senior manager" phrases are exempt; every other rule stays.
+  const ms = { company: 'Morgan Stanley' };
+  for (const title of ['Institutional Equity Division - Senior Manager, Java (Mumbai)', 'Senior Software Engineer (Senior Manager) - Parametric', 'QD Build Engineer, Manager/Senior Manager, Fixed Income Division', 'Sr. Manager, Quant Developer', 'Sr Manager Platform']) {
+    assert.deepEqual(evaluateJobRules({ title, ...ms }), { pass: true, reason: null }, title);
+    assert.equal(evaluateJobRules({ title, company: 'Meesho' }).reason, 'non_engineering_title', `${title} at another company`);
+  }
+  for (const [title, keyword] of [['Senior Manager, Product Manager', 'product manager'], ['Business Analyst, Senior Manager', 'analyst'], ['Senior Manager, Compliance', 'compliance'], ['Manager, Development Manager Group', 'development manager']]) {
+    const verdict = evaluateJobRules({ title, ...ms });
+    assert.deepEqual([verdict.pass, verdict.keyword], [false, keyword], title);
+  }
+  assert.equal(evaluateJobRules({ title: 'Director of Engineering', ...ms }).reason, 'seniority_title');
+  assert.equal(evaluateJobRules({ title: 'Senior Manager, Platform', company: 'Morgan Stanley Capital' }).pass, true);
+  assert.equal(classifyTitle('Senior Manager, Platform'), 'deny', 'company-agnostic callers still deny');
+  assert.equal(classifyTitle('Senior Manager, Platform', { company: 'Morgan Stanley' }), 'ambiguous');
+  assert.equal(PREFILTER_VERSION, 4);
+});

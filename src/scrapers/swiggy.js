@@ -1,3 +1,4 @@
+import { getConfig } from '../config/env.js';
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { BaseScraper } from './base-scraper.js';
 import { chat } from '../llm/index.js';
@@ -13,7 +14,7 @@ export class SwiggyScraper extends BaseScraper {
   constructor({ db }) {
     super({ db, source: 'swiggy-careers' });
     this.company = 'Swiggy';
-    this.firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY });
+    this.firecrawl = new FirecrawlApp({ apiKey: getConfig().firecrawlApiKey });
   }
 
   /**
@@ -47,6 +48,7 @@ ${markdown}`;
       const raw = await chat(
         'You extract structured job listings from careers pages. Return only valid JSON.',
         prompt,
+        { db: this.db, kind: 'extract' },
       );
       const jsonText = raw.replace(/```json|```/gi, '').trim();
       const start = jsonText.indexOf('[');

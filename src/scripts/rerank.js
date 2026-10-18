@@ -1,35 +1,12 @@
-import 'dotenv/config';
-import { createDatabase } from '../db.js';
-import { rankJob } from '../ranker/index.js';
+import { runRankCli } from './rank.js';
 
-async function main() {
-  const database = createDatabase();
-  try {
-    const jobs = database.prepare(`
-      SELECT id, title, description, company, location, source
-      FROM jobs
-      WHERE (relevance_score = 0 OR relevance_score IS NULL OR (@all = 1 AND source != 'manual'))
-        AND COALESCE(prefilter_status,'passed') != 'rejected'
-    `).all({ all: process.argv.includes('--all') ? 1 : 0 });
-    const updateJob = database.prepare(`
-      UPDATE jobs
-      SET relevance_score = ?, relevance_reason = ?, location = ?
-      WHERE id = ?
-    `);
-
-    for (const job of jobs) {
-      const { score, reason, location } = await rankJob(job.title, job.description, job.company, job.location);
-      updateJob.run(score, reason, job.source === 'manual' ? job.location : location, job.id);
-      console.log(`[Rerank] ${job.company}: ${job.title} → ${score}`);
-    }
-  } finally {
-    database.close();
-  }
-
-  process.exit(0);
-}
-
-main().catch((error) => {
-  console.error(error);
+// Thin wrapper kept for `npm run rerank`: same guards and dry-run default as `npm run rank`.
+// The old --all flag is replaced by an explicit versioned re-rank: npm run rank -- --rerank-version <N> --run
+if (process.argv.includes('--all')) {
+  console.error('[Rerank] --all was removed. Use: npm run rank -- --rerank-version <N> --run');
   process.exit(1);
+}
+runRankCli(process.argv.slice(2)).catch((error) => {
+  console.error(`[Rerank] ${error.message}`);
+  process.exitCode = 1;
 });

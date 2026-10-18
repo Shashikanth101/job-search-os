@@ -1,4 +1,4 @@
-# 0012: Pre-filter denies senior titles and 10+ year requirements, and persists its verdict
+# 0015: Pre-filter denies senior titles and 10+ year requirements, and persists its verdict
 
 ## Status
 Accepted
@@ -20,6 +20,17 @@ or explained.
   nice to have. A job is rejected when that value is >= `MAX_MIN_YEARS_REJECT` (10). Reason:
   `years_required_N`. No description means no years rule. Tunables live in the constants block at the
   top of `src/scrapers/pre-filter.js`; `PREFILTER_VERSION` is bumped whenever any rule changes.
+- **Non-engineering and wrong-level titles (rules version 3):** word-boundary deny on intern(ship), new grad,
+  graduate program, apprentice, student, ambassador, analyst, product manager, program manager, account
+  executive, revenue operations, paralegal, compliance, mainframe, network engineer and systems operations
+  (counsel, recruiter, customer success and marketing were already denied). Reason: `non_engineering_title`,
+  with the matched keyword reported by `evaluateJobRules` and the reclassify report. Known trade-offs, accepted
+  for review via the dry-run report: engineering internships/new-grad roles ("Software Engineer Intern"),
+  "Technical Program/Product Manager" and "Network Engineer" are rejected; "Compliance Engineer" is explicitly
+  carved out (the phrase is removed before keyword matching, so other "compliance" titles are still rejected);
+  "Developer Advocate", "Solutions Engineer", "Internal Tools Engineer" and "Analytics Engineer" are kept.
+  Reclassification of stored jobs is a separate, reviewed `--apply` step (it also moves newly rejected rows to
+  `rank_status = 'skipped'`).
 - **Manual jobs are never rejected** (unchanged; ADR 0003 "manual jobs bypass filters").
 - **Persisted verdict:** `jobs.prefilter_status` (`passed`/`rejected`), `prefilter_reason`,
   `prefilter_version`, `prefilter_checked_at` (migration 004, also in `schema.sql` for fresh databases).

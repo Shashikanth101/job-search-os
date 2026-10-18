@@ -27,8 +27,8 @@ Return ONLY valid JSON with this exact structure:
 STRICT RULES:
 - Never use em dashes in bullet text or in the middle of sentences. The summary may use one em dash as the separator after the title.
 - Never abbreviate LMS, IMS, VMS, OMS. Use full names or "multiple internal systems".
-- Use "1M+ user base" for Livspace platform scale. Never "10K+ daily active users". Never use the word "monthly".
-- Always preserve these exact metrics: 1M+ user base, 250+ Cr, 99.9% uptime, 3K-4K consignments, 5K-6K products, 4x velocity, 20+ APIs, 70%, 25%, 30%.
+- Use "1M+ user base" for Livspace platform scale. Never "50K+ daily active users". Never use the word "monthly".
+- Always preserve these exact metrics: 1M+ user base, 250+ Cr, 99.9% uptime, 3K-4K consignments, 5K-6K products, 4x velocity, 20+ services, 70%, 25%, 30%.
 - For frontend-focused, product, or consumer-facing roles, select exactly 8 Livspace bullets and exactly 3 StartUs bullets. Prefer S_CORE1, S_CORE2, and S_CORE3 as the 3 StartUs bullets in this mode.
 - For full-stack, B2B SaaS, or platform engineering roles, select exactly 7 Livspace bullets and exactly 4 StartUs bullets. Use individual S1-S6 bullets in this mode.
 - Always select exactly 4 project bullets, ordered by relevance.
@@ -63,10 +63,10 @@ function getSelectedBulletTexts(ids = [], pool) {
 
 /**
  * Generates a tailored LaTeX resume for a job.
- * @param {{jobTitle: string, company: string, jobDescription: string, jobId: string|number}} input Job details used for tailoring and output naming.
+ * @param {{jobTitle: string, company: string, jobDescription: string, jobId: string|number, db?: import('better-sqlite3').Database, dbJobId?: number}} input Job details used for tailoring and output naming; db/dbJobId only feed the llm_usage ledger.
  * @returns {Promise<string>} Absolute path to the generated LaTeX file.
  */
-export async function generateResume({ jobTitle, company, jobDescription, jobId }) {
+export async function generateResume({ jobTitle, company, jobDescription, jobId, db, dbJobId }) {
   if (!jobTitle || !company || !jobDescription || jobId === undefined || jobId === null || jobId === '') {
     throw new Error('jobTitle, company, jobDescription, and jobId are required.');
   }
@@ -78,7 +78,7 @@ export async function generateResume({ jobTitle, company, jobDescription, jobId 
   const systemPrompt = SYSTEM_PROMPT
     .replace('{{WORK_EXPERIENCE_CONTENT}}', workExperience)
     .replace('{{BULLET_POOL_CONTEXT}}', BULLET_POOL_CONTEXT);
-  const response = await resumeChat(systemPrompt, `Tailor this resume for the following job description:\n\n${jobDescription}`);
+  const response = await resumeChat(systemPrompt, `Tailor this resume for the following job description:\n\n${jobDescription}`, { db, jobId: dbJobId });
   const cleanedResponse = response.replace(/```json|```/gi, '').trim();
   const parsed = JSON.parse(cleanedResponse);
   const livspaceBullets = getSelectedBulletTexts(parsed.livspace_bullet_ids, LIVSPACE_BULLETS);

@@ -15,6 +15,14 @@ function getScoreStyle(score) {
  * @param {{ score: number|string|null|undefined, compact?: boolean }} props
  */
 export function ScoreBadge({ score, compact = false }) {
+  if (score == null || score === '') {
+    return (
+      <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold leading-tight text-slate-500 ring-1 ring-inset ring-slate-300">
+        Not ranked yet
+      </span>
+    );
+  }
+
   if (compact) {
     return (
       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset ${getScoreStyle(Number(score))}`}>

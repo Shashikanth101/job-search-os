@@ -1,11 +1,14 @@
 // Tunable pre-filter values. Bump PREFILTER_VERSION whenever any rule below changes so
 // stored verdicts (jobs.prefilter_version) can be recognized as stale and reclassified.
-export const PREFILTER_VERSION = 2;
+export const PREFILTER_VERSION = 4;
 export const MAX_MIN_YEARS_REJECT = 10;
 const YEARS_EXPERIENCE_WINDOW = 60;
 const DENIED_SENIORITY_TITLE = /\b(?:principal|distinguished|fellow|head of|director|vp|vice[\s-]+president|chief|engineering\s+manager|manager\s*,\s*engineering)\b/i;
 const OPTIONAL_YEARS_SENTENCE = /\b(?:preferred|bonus|plus|nice[\s-]to[\s-]have)\b/i;
 const YEARS_MENTION = /(?<![\d.$])(\d{1,2})\s*(?:\+|(?:-|–|—|to)\s*\d{1,2}\s*\+?)?\s*(?:years?|yrs?)\b/gi;
+
+// Non-engineering and wrong-level titles added in version 3. First match is reported as the keyword.
+const NON_ENGINEERING_TITLE = /\b(?:interns?|internships?|new[\s-]grads?|graduate programs?|apprentices?|students?|ambassadors?|analysts?|product managers?|program managers?|account executives?|revenue operations|paralegals?|compliance|mainframe|network engineers?|systems operations|senior\s+manager|sr\.?\s+manager|software\s+engineering\s+manager|development\s+manager)\b/i;
 
 const DENIED_TITLE = /\b(?:sales|account exec(?:utive)?s?|account managers?|customer success|customer support|business development|marketing|recruit(?:er|ing|ment)|talent acquisition|human resources|finance|financial|accountant|accounting|legal|counsel|data engineers?|data scientists?|devops|sre|site reliability|cloud infrastructure|infrastructure|backend|back[- ]end|ios|android|mobile|qa|quality assurance|security|executive assistant|administrative|payroll|procurement)\b/i;
 const ALLOWED_TITLE = /\b(?:front[- ]?end|full[- ]?stack|software (?:development )?engineer|sde|ui engineer|web engineer|ai (?:agents? )?engineer|applied ai engineer|ai application engineer|application engineer\s*[,/]\s*ai|(?:ai\s+)?agent(?:ic|s)?\s+engineer|ai product engineer|engineer\s*[-,]\s*(?:applied ai|ai agents?)|harness engineer|forward deployed engineer)\b/i;
@@ -14,22 +17,33 @@ const ALLOWED_COUNTRY = /\b(?:india|singapore|united arab emirates|uae|u\.a\.e\.
 const ALLOWED_CITY = /\b(?:bangalore|bengaluru|noida|gurgaon|gurugram|mumbai|pune|hyderabad|chennai|delhi|kolkata|ahmedabad|kochi|coimbatore|jaipur|indore|chandigarh|thiruvananthapuram|dubai|abu dhabi|sharjah|amsterdam|rotterdam|utrecht|eindhoven|london|manchester|edinburgh|belfast|bristol|glasgow)\b/i;
 const OTHER_COUNTRY = /\b(?:united states|usa|u\.s\.?|us|canada|australia|new zealand|germany|france|spain|italy|ireland|poland|portugal|sweden|norway|denmark|finland|switzerland|austria|belgium|israel|china|japan|korea|taiwan|brazil|mexico|argentina|philippines|indonesia|malaysia|thailand|vietnam|pakistan|bangladesh|nigeria|south africa|ontario|california|texas|new york)\b/i;
 
+// Morgan Stanley uses "Manager"/"Senior Manager" as corporate grades for individual contributors, so these
+// phrases do not reject its titles (every other rule still applies).
+const GRADE_TITLE_COMPANIES = /\bmorgan\s+stanley\b/i;
+const GRADE_TITLE_PHRASES = /\b(?:senior\s+manager|sr\.?\s+manager)\b/gi;
+
 /**
  * Classify a title and report why a title was denied.
  * @param {string} [title] Job title.
- * @returns {{classification: 'allow'|'deny'|'ambiguous', reason: string|null}} Verdict; reason is set only for deny.
+ * @param {{company?: string}} [options] Company, for company-specific carve-outs.
+ * @returns {{classification: 'allow'|'deny'|'ambiguous', reason: string|null, keyword?: string}} Verdict; reason is set only for deny.
  */
-export function classifyTitleWithReason(title = '') {
+export function classifyTitleWithReason(title = '', { company = '' } = {}) {
   const text = String(title ?? '');
   if (DENIED_SENIORITY_TITLE.test(text)) return { classification: 'deny', reason: 'seniority_title' };
   if (DENIED_TITLE.test(text)) return { classification: 'deny', reason: 'denied_title' };
+  // "Compliance Engineer" is an engineering role: strip it before keyword matching so "compliance" does not reject it.
+  let keywordText = text.replace(/\bcompliance\s+engineers?\b/gi, ' ');
+  if (GRADE_TITLE_COMPANIES.test(String(company ?? ''))) keywordText = keywordText.replace(GRADE_TITLE_PHRASES, ' ');
+  const nonEngineering = keywordText.match(NON_ENGINEERING_TITLE);
+  if (nonEngineering) return { classification: 'deny', reason: 'non_engineering_title', keyword: nonEngineering[0].toLowerCase() };
   if (AMBIGUOUS_ML_ENGINEER.test(text)) return { classification: 'ambiguous', reason: null };
   return { classification: ALLOWED_TITLE.test(text) ? 'allow' : 'ambiguous', reason: null };
 }
 
 /** Classify titles in code; ambiguous titles still need the existing relevance scorer. */
-export function classifyTitle(title = '') {
-  return classifyTitleWithReason(title).classification;
+export function classifyTitle(title = '', options = {}) {
+  return classifyTitleWithReason(title, options).classification;
 }
 
 /**
@@ -59,12 +73,12 @@ export function extractMinYears(description) {
  * Evaluate title and years-of-experience rules for one job (location is checked separately).
  * Manual jobs are never rejected (manual-job ADR).
  * @param {{title?: string, description?: string, source?: string}} job Job-like record.
- * @returns {{pass: boolean, reason: string|null}} Verdict with a machine-readable rejection reason.
+ * @returns {{pass: boolean, reason: string|null, keyword?: string}} Verdict with a machine-readable rejection reason (and matched keyword for keyword rules).
  */
 export function evaluateJobRules(job) {
   if (job?.source === 'manual') return { pass: true, reason: null };
-  const title = classifyTitleWithReason(job?.title);
-  if (title.classification === 'deny') return { pass: false, reason: title.reason };
+  const title = classifyTitleWithReason(job?.title, { company: job?.company });
+  if (title.classification === 'deny') return { pass: false, reason: title.reason, ...(title.keyword && { keyword: title.keyword }) };
   const years = extractMinYears(job?.description);
   if (years !== null && years >= MAX_MIN_YEARS_REJECT) return { pass: false, reason: `years_required_${years}` };
   return { pass: true, reason: null };
@@ -95,7 +109,7 @@ export function preFilterJobs(jobs, { company, source, hiresRemoteInIndia = fals
     const verdict = evaluateJobRules(job);
     if (!verdict.pass) {
       if (verdict.reason === 'seniority_title') counts.denied_seniority += 1;
-      else if (verdict.reason === 'denied_title') counts.denied_title += 1;
+      else if (verdict.reason === 'denied_title' || verdict.reason === 'non_engineering_title') counts.denied_title += 1;
       else counts.denied_years += 1;
       return false;
     }

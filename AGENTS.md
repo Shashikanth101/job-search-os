@@ -11,7 +11,8 @@ Always use Node 20 LTS. Run nvm use 20 before starting any session. Node 24 caus
 - Named exports preferred over default exports
 - All scrapers extend BaseScraper from src/scrapers/base-scraper.js
 - All LLM calls go through src/llm/index.js — never call provider APIs directly
-- Never hardcode API keys — always use process.env
+- Never hardcode API keys. Read env vars only through `getConfig()` in src/config/env.js (loads `.env` by explicit path, never `.env.example`); `.env.example` is the canonical list (default + one-line comment per variable, placeholder `your-key-here` for secrets). Run `npm run env:check` / `npm run env:sync`; tests/env.test.js fails if a variable is read but not documented.
+- Scrapers never call the LLM. They insert jobs with `rank_status = 'pending'`; ranking happens only in `rankPending()` (src/ranker/rank-pending.js) via the cron cycle or `npm run rank` (dry run unless `--run`), under the run lock, job/budget caps and circuit breaker (docs/adr/0016). Never reintroduce per-run re-ranking of existing jobs or write fake zero scores.
 - The pre-filter (src/scrapers/pre-filter.js) enforces title allow/deny classification and location eligibility before any job reaches the ranker — changes to scraper output shape must stay compatible with what pre-filter expects.
 - See docs/ARCHITECTURE.md and docs/adr/ for design rationale — this file covers conventions, not decisions.
 
@@ -33,8 +34,8 @@ read that file before making frontend changes.
 
 ## What Not To Touch
 - src/db.js schema — any schema changes go through a migration
-- .env.example — always keep in sync with any new env vars added
-- BaseScraper.run() — only modify after discussion
+- .env.example — always keep in sync with any new env vars added (and add the default to ENV_DEFAULTS in src/config/env.js)
+- BaseScraper.run() — only modify after discussion (it intentionally contains no LLM call; see ADR 0016)
 - applications.status — deprecated as of ADR 0009, jobs.status is the sole funnel-state source. Do not read or write applications.status in new code.
 
 ## Testing

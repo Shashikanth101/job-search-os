@@ -5,6 +5,7 @@ import { SmartRecruitersScraper } from './smartrecruiters.js';
 import { AshbyScraper } from './ashby.js';
 import { SwiggyScraper } from './swiggy.js';
 import { WorkdayScraper } from './workday.js';
+import { getConfig } from '../config/env.js';
 import { greenhouseConfigs, smartRecruitersConfigs, leverConfigs, ashbyConfigs, workdayConfigs } from '../config/scrappers.js';
 
 /**
@@ -13,7 +14,7 @@ import { greenhouseConfigs, smartRecruitersConfigs, leverConfigs, ashbyConfigs, 
  */
 export function loadCareerPages() {
   try {
-    const pages = JSON.parse(process.env.CAREER_PAGES_JSON ?? '[]');
+    const pages = JSON.parse(getConfig().careerPagesJson);
     if (!Array.isArray(pages)) throw new Error('CAREER_PAGES_JSON must be an array.');
     return pages;
   } catch (error) {

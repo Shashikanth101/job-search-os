@@ -39,6 +39,6 @@ export function groupByCompany(jobs) {
 /** Group by displayed score, highest first; missing scores follow score zero. */
 export function groupByScore(jobs) {
   return collectGroups(jobs, getDisplayedScore)
-    .map((group) => ({ ...group, label: group.key === null ? 'Unscored' : `Score: ${group.key}` }))
+    .map((group) => ({ ...group, label: group.key === null ? 'Not ranked yet' : `Score: ${group.key}` }))
     .sort((a, b) => (b.key ?? -1) - (a.key ?? -1));
 }

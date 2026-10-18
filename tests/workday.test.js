@@ -45,16 +45,15 @@ test('Workday POST paginates by actual page size, resolves multi-location detail
       return json({ jobPostingInfo: detail(id, id === '3' ? { additionalLocations: [] } : {}) });
     }
     ranked += 1;
-    assert.match(JSON.parse(init.body).messages[1].content, /React & TypeScript \+ UI/);
-    return json({ choices: [{ message: { content: JSON.stringify({ score: 9, reason: 'Frontend fit', location: null }) } }] });
+    throw new Error(`unexpected fetch ${url}`);
   });
   assert.equal(await scraper.run(), 1);
   assert.equal(await scraper.run(), 1);
   assert.deepEqual(offsets, [0, 2, 0, 2]);
   assert.deepEqual(details, ['2', '3', '2', '3']);
-  assert.equal(ranked, 2);
-  assert.deepEqual(db.prepare('SELECT job_id, posted_at, apply_url, relevance_score FROM jobs').all(), [{
-    job_id: '2', posted_at: '2026-09-01', apply_url: 'https://test.wd5.myworkdayjobs.com/Careers/job/Remote/Engineer_2', relevance_score: 9,
+  assert.equal(ranked, 0, 'scraping never ranks');
+  assert.deepEqual(db.prepare('SELECT job_id, posted_at, apply_url, relevance_score, rank_status FROM jobs').all(), [{
+    job_id: '2', posted_at: '2026-09-01', apply_url: 'https://test.wd5.myworkdayjobs.com/Careers/job/Remote/Engineer_2', relevance_score: null, rank_status: 'pending',
   }]);
 });
 

@@ -4,7 +4,7 @@ import linkedinOutreach from './config/linkedin-outreach.js';
 import manualLinks from './config/manual-links.js';
 import uncoveredCompanies from './config/uncovered-companies.js';
 import messageTemplates from './config/message-templates.js';
-import { rankJob } from './ranker/index.js';
+import { rankOne } from './ranker/rank-pending.js';
 import { JOB_TYPES } from './jobs/fields.js';
 import { serializeJob } from './db.js';
 import { compileResume } from './resume/compiler.js';
@@ -81,7 +81,7 @@ export function createApp(db) {
     if (req.query.minScore !== undefined) {
       const minScore = Number(req.query.minScore);
       if (!Number.isFinite(minScore)) return res.status(400).json({ error: 'minScore must be a number.' });
-      clauses.push("(source = 'manual' OR relevance_score >= @minScore)");
+      clauses.push("(source = 'manual' OR relevance_score IS NULL OR relevance_score >= @minScore)");
       params.minScore = minScore;
     }
     if (req.query.location === 'india') {
@@ -134,11 +134,11 @@ export function createApp(db) {
     try {
       const jobId = `manual-${Date.now()}`;
       const result = db.prepare(`
-        INSERT INTO jobs (job_id, title, company, description, apply_url, location, job_type, source, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?)
+        INSERT INTO jobs (job_id, title, company, description, apply_url, location, job_type, source, status, rank_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, 'pending')
       `).run(jobId, title, company, jobDescription, applyUrl, location?.trim() || null, job_type, status);
-      const { score, reason } = await rankJob(title, jobDescription, company, location);
-      db.prepare('UPDATE jobs SET relevance_score = ?, relevance_reason = ? WHERE id = ?').run(score, reason, result.lastInsertRowid);
+      // Same client, ledger and failure semantics as batch ranking: on infrastructure errors the job stays 'pending' with no score.
+      await rankOne(db, { id: result.lastInsertRowid, title, description: jobDescription, company, location, source: 'manual' }, { kind: 'manual' });
       const application = db.prepare(`
         INSERT INTO applications (job_id, applied_at)
         VALUES (?, ?)
@@ -261,6 +261,8 @@ export function createApp(db) {
         jobTitle: job.title,
         company: job.company,
         jobDescription: job.description ?? '',
+        db,
+        dbJobId: job.id,
       });
       const pdfPath = await compileResume(texPath);
       const pdf = await fs.stat(pdfPath);
@@ -297,20 +299,22 @@ export function createApp(db) {
   app.get('/api/stats', (_req, res) => {
     const stats = db.prepare(`
       SELECT
-        (SELECT COUNT(*) FROM jobs WHERE is_new = 1 AND date(found_at, 'localtime') = date('now', 'localtime')) AS new_jobs_today,
+        (SELECT COUNT(*) FROM jobs WHERE COALESCE(prefilter_status, 'passed') != 'rejected' AND is_new = 1 AND date(found_at, 'localtime') = date('now', 'localtime')) AS new_jobs_today,
         COUNT(*) AS total_jobs,
         COALESCE(AVG(relevance_score), 0) AS average_score,
-        (SELECT COUNT(*) FROM jobs WHERE status = 'not_applied') AS saved_applications,
-        (SELECT COUNT(*) FROM jobs WHERE status IN ('applied', 'in_process')) AS applied_applications,
+        (SELECT COUNT(*) FROM jobs WHERE COALESCE(prefilter_status, 'passed') != 'rejected' AND status = 'not_applied') AS saved_applications,
+        (SELECT COUNT(*) FROM jobs WHERE COALESCE(prefilter_status, 'passed') != 'rejected' AND status IN ('applied', 'in_process')) AS applied_applications,
         (SELECT COUNT(*) FROM applications
           JOIN jobs ON jobs.id = applications.job_id
-          WHERE jobs.status IN ('applied', 'in_process')
+          WHERE COALESCE(jobs.prefilter_status, 'passed') != 'rejected'
+            AND jobs.status IN ('applied', 'in_process')
             AND applications.follow_up_due IS NOT NULL
             AND applications.id = (
               SELECT latest.id FROM applications AS latest
               WHERE latest.job_id = jobs.id ORDER BY latest.id DESC LIMIT 1
             )) AS pending_follow_ups
       FROM jobs
+      WHERE COALESCE(prefilter_status, 'passed') != 'rejected'
     `).get();
     const followUps = db.prepare(`
       SELECT

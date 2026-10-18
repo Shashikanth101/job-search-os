@@ -96,10 +96,10 @@ export function App() {
   const visibleJobs = useMemo(
     () => jobs
       .filter((job) => company === 'All' || job.company === company)
-      .filter((job) => job.source === 'manual' || Number(job.relevance_score) >= minScore)
+      .filter((job) => job.source === 'manual' || job.relevance_score == null || Number(job.relevance_score) >= minScore)
       .filter((job) => !newOnly || job.is_new)
       .filter((job) => jobStatus === 'All' || (job.status || 'not_applied') === jobStatus)
-      .sort((a, b) => Number(b.relevance_score) - Number(a.relevance_score)),
+      .sort((a, b) => (b.relevance_score ?? -1) - (a.relevance_score ?? -1)),
     [jobStatus, company, jobs, minScore, newOnly],
   );
 

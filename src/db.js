@@ -2,9 +2,13 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getConfig } from './config/env.js';
 import { migrateJobResumePath } from './migrations/002-job-resume-path.js';
 import { migrateCoarseJobStatus } from './migrations/003-coarse-job-status.js';
 import { migrateJobPrefilter } from './migrations/004-job-prefilter.js';
+import { migrateRankingState } from './migrations/005-ranking-state.js';
+import { migrateRankArchetype } from './migrations/006-rank-archetype.js';
+import { migrateLockOwner } from './migrations/007-lock-owner.js';
 
 const schemaPath = fileURLToPath(new URL('./schema.sql', import.meta.url));
 
@@ -35,7 +39,7 @@ function migrateLegacyJobsTable(database) {
  * @param {string} databasePath Path to the SQLite database file.
  * @returns {import('better-sqlite3').Database} Configured database connection.
  */
-export function createDatabase(databasePath = process.env.DATABASE_PATH ?? './data/jobs.db') {
+export function createDatabase(databasePath = getConfig().databasePath) {
   const resolvedPath = path.resolve(databasePath);
   fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
   const database = new Database(resolvedPath);
@@ -45,6 +49,9 @@ export function createDatabase(databasePath = process.env.DATABASE_PATH ?? './da
   migrateJobResumePath(database);
   migrateCoarseJobStatus(database);
   migrateJobPrefilter(database);
+  migrateRankingState(database);
+  migrateRankArchetype(database);
+  migrateLockOwner(database);
   return database;
 }
 

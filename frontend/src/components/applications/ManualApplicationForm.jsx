@@ -28,7 +28,7 @@ export function ManualApplicationForm({ open, onToggle, submitting, onSubmit, re
       <div role="status" aria-live="polite" aria-atomic="true">
         {result && (
           <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-            Saved — ranked {result.relevance_score ?? '—'}/10: {result.relevance_reason || 'No relevance summary available.'}
+            Saved — {result.relevance_score == null ? 'not ranked yet' : `ranked ${result.relevance_score}/10`}: {result.relevance_reason || 'No relevance summary available.'}
           </p>
         )}
       </div>

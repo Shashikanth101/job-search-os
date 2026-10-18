@@ -1,7 +1,8 @@
-import 'dotenv/config';
+import '../config/load-env.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import { getConfig } from '../config/env.js';
 import { createDatabase } from '../db.js';
 import { PREFILTER_VERSION, evaluateJobRules } from '../scrapers/pre-filter.js';
 
@@ -34,6 +35,7 @@ export function evaluateStoredJobs(db) {
   const jobs = db.prepare(`
     SELECT jobs.id, jobs.company, jobs.title, jobs.location, jobs.description, jobs.source, jobs.status,
       jobs.relevance_reason,
+      ${hasColumns ? 'jobs.rank_status' : 'NULL AS rank_status'},
       ${hasColumns ? 'jobs.prefilter_status, jobs.prefilter_reason, jobs.prefilter_version' : 'NULL AS prefilter_status, NULL AS prefilter_reason, NULL AS prefilter_version'},
       (EXISTS (SELECT 1 FROM interviews WHERE interviews.job_id = jobs.id)
         OR EXISTS (SELECT 1 FROM outreach WHERE outreach.job_id = jobs.id)) AS has_activity
@@ -45,7 +47,7 @@ export function evaluateStoredJobs(db) {
     const isProtected = job.source === 'manual' || job.status !== 'not_applied' || Boolean(job.has_activity);
     if (isProtected && !verdict.pass) protectedWouldReject += 1;
     const rejected = !verdict.pass && !isProtected;
-    return { ...job, status_new: rejected ? 'rejected' : 'passed', reason_new: rejected ? verdict.reason : null };
+    return { ...job, status_new: rejected ? 'rejected' : 'passed', reason_new: rejected ? verdict.reason : null, keyword: rejected ? verdict.keyword ?? null : null };
   });
   return { total: jobs.length, decisions, protectedWouldReject };
 }
@@ -70,6 +72,14 @@ function buildReport({ mode, total, decisions, protectedWouldReject, before, aft
   for (const job of rejected) byCompany.set(job.company, (byCompany.get(job.company) ?? 0) + 1);
   const random = mulberry32(SAMPLE_SEED);
   const sample = [...rejected].sort(() => random() - 0.5).slice(0, SAMPLE_SIZE);
+  const newly = rejected.filter((job) => (job.prefilter_status ?? 'passed') !== 'rejected');
+  const byKeyword = new Map();
+  for (const job of newly.filter((entry) => entry.keyword)) byKeyword.set(job.keyword, (byKeyword.get(job.keyword) ?? 0) + 1);
+  const newlyByReason = new Map();
+  for (const job of newly) newlyByReason.set(job.reason_new.replace(/^years_required_\d+$/, 'years_required_N'), (newlyByReason.get(job.reason_new.replace(/^years_required_\d+$/, 'years_required_N')) ?? 0) + 1);
+  const newlySample = [...newly].sort(() => random() - 0.5).slice(0, SAMPLE_SIZE);
+  const engineeringLooking = newly.filter((job) => job.keyword && /engineer|developer|\bsde\b|software|advocate|architect/i.test(job.title));
+  const newlyPending = newly.filter((job) => ['pending', 'failed'].includes(job.rank_status)).length;
   const reviewKept = decisions.filter((job) => job.status_new === 'passed' && REVIEW_TITLE.test(job.title));
   const lines = [
     '# Pre-filter reclassification report', '',
@@ -80,6 +90,16 @@ function buildReport({ mode, total, decisions, protectedWouldReject, before, aft
     `- Dashboard-visible before: ${before.visible} (still "Ranking failed": ${before.visibleRankingFailed})`,
     `- Dashboard-visible after: ${after.visible} (still "Ranking failed": ${after.visibleRankingFailed})`,
     backupPath ? `- Backup: \`${backupPath}\`` : '- Backup: none (dry run, nothing written)', '',
+    `## Newly rejected by this run (not rejected in the stored state): ${newly.length}`, '',
+    `Of these, ${newlyPending} are currently pending/failed ranking (they would leave the ranking queue).`, '',
+    '| Reason | Newly rejected |', '|---|---|',
+    ...[...newlyByReason].sort((a, b) => b[1] - a[1]).map(([reason, count]) => `| ${reason} | ${count} |`), '',
+    '### Count per matched keyword (non_engineering_title, first match)', '', '| Keyword | Count |', '|---|---|',
+    ...[...byKeyword].sort((a, b) => b[1] - a[1]).map(([keyword, count]) => `| ${keyword} | ${count} |`), '',
+    `### ${SAMPLE_SIZE} sample newly rejected titles (seed ${SAMPLE_SEED})`, '',
+    ...newlySample.map((job) => `- ${job.title} — ${job.company} (${job.reason_new}${job.keyword ? `: ${job.keyword}` : ''})`), '',
+    `### Review for false positives: keyword-rejected titles that also look like engineering roles (${engineeringLooking.length})`, '',
+    ...engineeringLooking.slice(0, 120).map((job) => `- #${job.id} ${job.title} — ${job.company} [${job.keyword}]`), '',
     '## Rejections by reason', '', '| Reason | Count |', '|---|---|',
     ...[...byReason].sort((a, b) => b[1] - a[1]).map(([reason, count]) => `| ${reason} | ${count} |`), '',
     `## Top ${TOP_COMPANIES} companies by rejected count`, '', '| Company | Rejected |', '|---|---|',
@@ -137,6 +157,9 @@ export async function reclassifyPrefilter({ dbPath, apply = false, outDir }) {
           if (unchanged) continue;
           updated += update.run(job).changes;
         }
+        // Keep rank_status consistent with the verdict: rejected rows are 'skipped'; un-rejected skipped rows return to the queue.
+        db.prepare("UPDATE jobs SET rank_status = 'skipped' WHERE prefilter_status = 'rejected' AND rank_status IS NOT NULL AND rank_status != 'skipped'").run();
+        db.prepare("UPDATE jobs SET rank_status = CASE WHEN relevance_score IS NULL THEN 'pending' ELSE 'ranked' END WHERE COALESCE(prefilter_status, 'passed') != 'rejected' AND rank_status = 'skipped'").run();
       }).immediate();
     }
     fs.mkdirSync(outDir, { recursive: true });
@@ -145,7 +168,8 @@ export async function reclassifyPrefilter({ dbPath, apply = false, outDir }) {
     fs.writeFileSync(path.join(outDir, 'prefilter-rejected.csv'), csv);
     const rejected = decisions.filter((job) => job.status_new === 'rejected').length;
     console.log(`[Reclassify] ${JSON.stringify({ mode: apply ? 'apply' : 'dry-run', total: evaluation.total, rejected, updated, before, after, backupPath })}`);
-    return { total: evaluation.total, rejected, updated, before, after, backupPath };
+    const newlyRejected = decisions.filter((job) => job.status_new === 'rejected' && (job.prefilter_status ?? 'passed') !== 'rejected').length;
+    return { total: evaluation.total, rejected, newlyRejected, updated, before, after, backupPath };
   } finally {
     db.close();
   }
@@ -155,7 +179,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   const args = process.argv.slice(2);
   const valueOf = (flag) => args.find((arg) => arg.startsWith(`${flag}=`))?.slice(flag.length + 1);
   reclassifyPrefilter({
-    dbPath: path.resolve(valueOf('--db') ?? process.env.DATABASE_PATH ?? './data/jobs.db'),
+    dbPath: path.resolve(valueOf('--db') ?? getConfig().databasePath),
     apply: args.includes('--apply'),
     outDir: path.resolve(valueOf('--out') ?? 'tmp'),
   }).catch((error) => {

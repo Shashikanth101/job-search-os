@@ -1,11 +1,19 @@
-import 'dotenv/config';
+import './config/load-env.js';
+import { assertEnv, getConfig } from './config/env.js';
 import { createDatabase } from './db.js';
 import { createApp } from './app.js';
 import { startScheduler } from './scheduler.js';
 
+try {
+  assertEnv({ requireLlm: true });
+} catch (error) {
+  console.error(`[Config] ${error.message}`);
+  process.exit(1);
+}
+
 const database = createDatabase();
 const app = createApp(database);
-const port = Number(process.env.PORT ?? 3001);
+const port = getConfig().port;
 
 app.listen(port, () => {
   console.log(`job-search-os API listening on port ${port}`);

@@ -1,4 +1,3 @@
-import { rankJob } from '../ranker/index.js';
 import { normalizeJobType } from '../jobs/fields.js';
 import { PREFILTER_VERSION, evaluateJobRules } from './pre-filter.js';
 
@@ -36,17 +35,17 @@ export class BaseScraper {
 
   /**
    * Inserts new jobs (stamping their pre-filter verdict) and refreshes only non-user
-   * metadata of existing rows. A re-scrape never changes prefilter_*, relevance_*,
+   * metadata of existing rows. New rows are 'pending' (no score). A re-scrape never changes prefilter_*, rank_*, relevance_*,
    * location (ranker-normalized), status, is_new or resume_path.
    * @param {Array<object>} jobs Normalized jobs.
    * @returns {number} Number of records written.
    */
   saveToDb(jobs) {
     const statement = this.db.prepare(`
-      INSERT INTO jobs (job_id, title, company, location, job_type, description, apply_url, source, posted_at, relevance_score, relevance_reason,
-        prefilter_status, prefilter_reason, prefilter_version, prefilter_checked_at)
-      VALUES (@job_id, @title, @company, @location, @job_type, @description, @apply_url, @source, @posted_at, @relevance_score, @relevance_reason,
-        'passed', NULL, @prefilter_version, CURRENT_TIMESTAMP)
+      INSERT INTO jobs (job_id, title, company, location, job_type, description, apply_url, source, posted_at,
+        prefilter_status, prefilter_reason, prefilter_version, prefilter_checked_at, rank_status)
+      VALUES (@job_id, @title, @company, @location, @job_type, @description, @apply_url, @source, @posted_at,
+        'passed', NULL, @prefilter_version, CURRENT_TIMESTAMP, 'pending')
       ON CONFLICT(company, job_id) DO UPDATE SET
         title = excluded.title,
         job_type = excluded.job_type,
@@ -75,8 +74,6 @@ export class BaseScraper {
           apply_url: job.apply_url ?? null,
           source: job.source ?? this.source,
           posted_at: job.posted_at ?? null,
-          relevance_score: job.relevance_score == null ? null : Number(job.relevance_score),
-          relevance_reason: job.relevance_reason ?? null,
           prefilter_version: PREFILTER_VERSION
         });
         saved += 1;
@@ -87,25 +84,13 @@ export class BaseScraper {
   }
 
   /**
-   * Executes the full scrape, parse, rank, and persistence pipeline.
+   * Executes scrape, parse, pre-filter (inside parseJobs) and persistence. Makes no LLM call:
+   * new rows are stored 'pending' and ranked later by rankPending().
    * @returns {Promise<number>} Number of records written.
    */
   async run() {
     const raw = await this.scrape();
     const jobs = await this.parseJobs(raw);
-
-    const ranked = await Promise.all(
-      jobs.map(async (job) => {
-        try {
-          const { score, reason, location } = await rankJob(job.title, job.description, job.company, job.location);
-          return { ...job, location, relevance_score: score, relevance_reason: reason };
-        } catch (error) {
-          console.error(`Ranking failed for "${job.title}" at ${job.company}:`, error.message);
-          return { ...job, relevance_score: 0, relevance_reason: 'Ranking failed' };
-        }
-      })
-    );
-
-    return this.saveToDb(ranked);
+    return this.saveToDb(jobs);
   }
 }

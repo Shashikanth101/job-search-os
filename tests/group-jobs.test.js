@@ -19,7 +19,7 @@ test('company groups use average displayed scores, deterministic ties and immuta
 test('score groups sort numerically descending, retain fractions and separate zero from unscored', () => {
   const jobs = [0, '10', 8.5, 2, null, undefined, '10'].map((relevance_score, id) => ({ id, relevance_score }));
   const groups = groupByScore(jobs);
-  assert.deepEqual(groups.map((group) => group.label), ['Score: 10', 'Score: 8.5', 'Score: 2', 'Score: 0', 'Unscored']);
+  assert.deepEqual(groups.map((group) => group.label), ['Score: 10', 'Score: 8.5', 'Score: 2', 'Score: 0', 'Not ranked yet']);
   assert.deepEqual(groups[0].jobs.map((job) => job.id), [1, 6]);
   assert.deepEqual(groupByCompany([]), []);
   assert.deepEqual(groupByScore([]), []);

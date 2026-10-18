@@ -1,3 +1,4 @@
+import { getConfig } from '../config/env.js';
 import Firecrawl from '@mendable/firecrawl-js';
 import { BaseScraper } from './base-scraper.js';
 
@@ -17,7 +18,7 @@ export class FirecrawlCareerScraper extends BaseScraper {
     if (!url || !company) throw new Error('Firecrawl scrapers require url and company.');
     this.url = url;
     this.company = company;
-    this.client = new Firecrawl({ apiKey: process.env.FIRECRAWL_API_KEY });
+    this.client = new Firecrawl({ apiKey: getConfig().firecrawlApiKey });
   }
 
   /**
@@ -25,7 +26,7 @@ export class FirecrawlCareerScraper extends BaseScraper {
    * @returns {Promise<object>} Firecrawl response.
    */
   async scrape() {
-    if (!process.env.FIRECRAWL_API_KEY) {
+    if (!getConfig().firecrawlApiKey) {
       throw new Error(`FIRECRAWL_API_KEY is required to scrape ${this.company}.`);
     }
     return this.client.scrapeUrl(this.url, { formats: ['markdown'], onlyMainContent: true });
@@ -52,9 +53,7 @@ export class FirecrawlCareerScraper extends BaseScraper {
         job_type: null,
         description: markdown.slice(Math.max(0, match.index - 300), match.index + 600).trim(),
         source: this.source,
-        posted_at: null,
-        relevance_score: null,
-        relevance_reason: null
+        posted_at: null
       });
     }
     return jobs;
