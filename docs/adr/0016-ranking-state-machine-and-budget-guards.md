@@ -76,6 +76,17 @@ no retry limit, budget cap, lock, circuit breaker or usage record, and concurren
   bug). A missing `.env` (hosted deployments) changes nothing, so real environment variables apply. Startup logs one
   line naming (never valuing) the shell variables that were overridden. The real `.env` is never loaded under
   tests; tests pass an explicit temp path to the loader.
+- **Golden eval harness:** `evals/golden.jsonl` holds 60 real jobs with hand-editable `expected_min`/`expected_max`
+  (pre-filled from the stored score +/-1; `description` is the exact 1,500-character text the ranker sends,
+  `description_full` the stored text). `npm run eval` is a dry run (count and cost estimate); `npm run eval -- --run
+  [--model X] [--provider Y] [--compare-trim] [--min-pass-rate 0.9]` scores each job through the production
+  `rankJob` path (no retries), never writes to `jobs`, logs to `llm_usage` with `purpose='eval'` (migration 008;
+  counts toward the daily budget), prints per-job PASS/FAIL, pass rate, cost and parse failures, saves
+  `tmp/eval-*.json` and exits 1 below the gate. Changing the prompt requires a passing eval before any re-rank.
+- **Description trimming (experimental):** `RANK_TRIM_DESCRIPTIONS=1` strips EEO, benefits and company boilerplate
+  (sentence-level, since stored descriptions are flat text) and caps at 1,200 characters, instead of cutting the
+  first 1,500; it never over-trims. Default is `0` and production behavior is unchanged; the input hash follows
+  whichever text is sent. `--compare-trim` reports cost and pass rate with the flag off versus on.
 - Unranked jobs have a NULL score everywhere (never 0), sort last and display as "Not ranked yet".
 
 ## Consequences

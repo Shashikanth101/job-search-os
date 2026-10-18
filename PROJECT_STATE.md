@@ -46,6 +46,8 @@ Phase 3's final scope also includes duplicate-job prevention, manual location an
 
 ## Recent Fixes / Changelog
 
+- Added a golden eval harness: `evals/golden.jsonl` (60 real jobs, hand-editable expected score ranges), `npm run eval` (dry run) and `npm run eval -- --run [--model] [--provider] [--compare-trim]` (never writes to `jobs`; ledger rows carry `purpose='eval'`, migration 008). AGENTS.md now requires a passing eval before any `--rerank-version` run. Added the experimental `RANK_TRIM_DESCRIPTIONS` flag (default 0; production unchanged). Fixed `inputHash` to follow the same trim setting as the prompt.
+
 - Made `.env` authoritative: `loadEnvFile()` (src/config/env.js, called by `src/config/load-env.js`) overrides shell variables with `.env` values, does nothing when `.env` is absent, never loads the real `.env` under tests, and logs one line with the names of overridden variables.
 
 - Graceful ranker shutdown (ADR 0016): Ctrl+C/SIGTERM/SIGHUP drains in-flight calls (≤15 s), leaves aborted jobs `pending`, releases the `rank` lock (owner-checked) and exits 130/143/129; a second signal exits at once. `app_locks` now records pid/hostname (migration 007) so a lock left by a dead process on the same host is reclaimed automatically.

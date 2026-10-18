@@ -4,12 +4,12 @@
  * @param {object} entry Ledger fields.
  * @returns {void}
  */
-export function recordUsage(db, { runId = null, kind, jobId = null, model, inputTokens = 0, outputTokens = 0, estCostUsd = 0, status, error = null }) {
+export function recordUsage(db, { runId = null, kind, jobId = null, model, inputTokens = 0, outputTokens = 0, estCostUsd = 0, status, error = null, purpose = null }) {
   if (!db) return;
   try {
-    db.prepare(`INSERT INTO llm_usage (ts, run_id, kind, job_id, model, input_tokens, output_tokens, est_cost_usd, status, error)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(new Date().toISOString(), runId, kind, jobId, model ?? null, inputTokens, outputTokens, estCostUsd, status,
-      error ? String(error).slice(0, 500) : null);
+    db.prepare(`INSERT INTO llm_usage (ts, run_id, kind, job_id, model, input_tokens, output_tokens, est_cost_usd, status, error, purpose)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(new Date().toISOString(), runId, kind, jobId, model ?? null, inputTokens, outputTokens, estCostUsd, status,
+      error ? String(error).slice(0, 500) : null, purpose);
   } catch (err) {
     console.error(`[LLM] Could not write llm_usage ledger row: ${err.message}`);
   }

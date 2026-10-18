@@ -107,14 +107,15 @@ function classifyHttpError(status, rawBody) {
  * URL overrides are client-scoped and Ollama-only; a resume URL override
  * additionally requires RESUME_LLM_PROVIDER=ollama and never falls back to LLM_BASE_URL.
  * @param {'ranker'|'resume'} [client] Which configuration to resolve.
+ * @param {{model?: string, provider?: string}} [overrides] Per-call overrides (eval harness). The configured API key is reused.
  * @returns {{provider: string, apiKey?: string, model: string, baseURL: string, config?: object}} Resolved settings.
  */
-export function resolveLlmSettings(client = 'ranker') {
+export function resolveLlmSettings(client = 'ranker', overrides = {}) {
   const config = getConfig();
   const settings = client === 'resume'
     ? { ...config.resumeLlm, baseURL: config.resumeLlm.baseUrl }
     : { ...config.llm, baseURL: config.llm.baseUrl };
-  const provider = settings.provider || 'anthropic';
+  const provider = overrides.provider || settings.provider || 'anthropic';
   const providerConfig = PROVIDERS[provider];
   if (!providerConfig) {
     throw new LlmError(`Unknown LLM provider: "${provider}". Valid options: ${Object.keys(PROVIDERS).join(', ')}`, { kind: 'config' });
@@ -122,7 +123,8 @@ export function resolveLlmSettings(client = 'ranker') {
   return {
     provider,
     apiKey: settings.apiKey,
-    model: settings.model || providerConfig.defaultModel,
+    // An explicit model wins; switching provider without a model falls back to that provider's default.
+    model: overrides.model || (overrides.provider ? undefined : settings.model) || providerConfig.defaultModel,
     baseURL: provider === 'ollama' ? settings.baseURL || providerConfig.baseURL : providerConfig.baseURL,
     config: providerConfig,
   };
@@ -197,14 +199,16 @@ async function httpTransport({ settings, system, user, maxTokens, temperature, d
  * @param {'ranker'|'resume'} [options.client] Which LLM configuration to use.
  * @param {number} [options.maxTokens] Output token cap (provider default when omitted).
  * @param {number} [options.temperature] Sampling temperature (not sent to Anthropic).
+ * @param {{model?: string, provider?: string}} [options.overrides] Per-call model/provider override (eval harness).
+ * @param {string} [options.purpose] Ledger marker, e.g. 'eval'.
  * @param {AbortSignal} [options.signal] Aborts the request; the call then rejects with an LlmError of kind 'aborted'.
  * @param {boolean} [options.disableThinking] Request no extended thinking (Anthropic only, requires LLM_ANTHROPIC_DISABLE_THINKING=1).
  * @returns {Promise<{text: string, usage: {input_tokens: number, output_tokens: number}, model: string, estCostUsd: number}>} Response.
  * @throws {LlmError} Classified failure.
  */
-export async function callLlm(system, user, { db, kind = 'extract', jobId = null, runId = null, client = 'ranker', maxTokens, temperature, disableThinking = false, signal } = {}) {
+export async function callLlm(system, user, { db, kind = 'extract', jobId = null, runId = null, client = 'ranker', maxTokens, temperature, disableThinking = false, signal, overrides, purpose = null } = {}) {
   if (getConfig().llm.disabled) throw new LlmError('LLM calls are disabled (LLM_DISABLED=1).', { kind: 'disabled' });
-  const settings = resolveLlmSettings(client);
+  const settings = resolveLlmSettings(client, overrides);
   const request = { provider: settings.provider, model: settings.model, system, user, maxTokens, temperature, kind, signal };
   let result;
   try {
@@ -218,12 +222,12 @@ export async function callLlm(system, user, { db, kind = 'extract', jobId = null
   } catch (error) {
     const wrapped = signal?.aborted ? new LlmError('LLM request aborted.', { kind: 'aborted' })
       : error instanceof LlmError ? error : new LlmError(error.message, { kind: 'network' });
-    recordUsage(db, { runId, kind, jobId, model: settings.model, status: 'error', error: wrapped.message });
+    recordUsage(db, { runId, kind, jobId, model: settings.model, status: 'error', error: wrapped.message, purpose });
     throw wrapped;
   }
   const usage = { input_tokens: result.usage?.input_tokens ?? 0, output_tokens: result.usage?.output_tokens ?? 0 };
   const estCostUsd = estimateCostUsd(settings.model, usage.input_tokens, usage.output_tokens);
-  recordUsage(db, { runId, kind, jobId, model: settings.model, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, estCostUsd, status: 'ok' });
+  recordUsage(db, { runId, kind, jobId, model: settings.model, inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, estCostUsd, status: 'ok', purpose });
   if (result.truncated) console.warn('[LLM Warning] Response was cut off due to the token limit.');
   return { text: result.text ?? '', usage, model: settings.model, estCostUsd, truncated: Boolean(result.truncated) };
 }

@@ -91,7 +91,8 @@ CREATE TABLE IF NOT EXISTS llm_usage (
   output_tokens INTEGER NOT NULL DEFAULT 0,
   est_cost_usd REAL NOT NULL DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('ok', 'error')),
-  error TEXT
+  error TEXT,
+  purpose TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_llm_usage_ts ON llm_usage (ts);
 

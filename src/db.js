@@ -9,6 +9,7 @@ import { migrateJobPrefilter } from './migrations/004-job-prefilter.js';
 import { migrateRankingState } from './migrations/005-ranking-state.js';
 import { migrateRankArchetype } from './migrations/006-rank-archetype.js';
 import { migrateLockOwner } from './migrations/007-lock-owner.js';
+import { migrateUsagePurpose } from './migrations/008-usage-purpose.js';
 
 const schemaPath = fileURLToPath(new URL('./schema.sql', import.meta.url));
 
@@ -52,6 +53,7 @@ export function createDatabase(databasePath = getConfig().databasePath) {
   migrateRankingState(database);
   migrateRankArchetype(database);
   migrateLockOwner(database);
+  migrateUsagePurpose(database);
   return database;
 }
 

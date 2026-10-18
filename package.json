@@ -14,6 +14,7 @@
     "scrape": "node src/scrape.js",
     "env:check": "node scripts/env-sync.js check",
     "env:sync": "node scripts/env-sync.js sync",
+    "eval": "node scripts/eval.js",
     "rank": "node src/scripts/rank.js",
     "rerank": "node src/scripts/rerank.js",
     "generate-resume": "node src/scripts/generate-resume.js"

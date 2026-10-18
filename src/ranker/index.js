@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { callLlm } from '../llm/index.js';
 import { getConfig } from '../config/env.js';
+import { TRIM_MAX_CHARS, trimDescription } from './trim-description.js';
 import { parseNormalizedLocation } from '../jobs/fields.js';
 
 /** Bump when the prompt or output contract changes; stored as jobs.rank_prompt_version. */
@@ -75,17 +76,28 @@ export class RankOutputError extends Error {
  * @param {string} description Job description.
  * @returns {string} sha256 hex digest.
  */
-export function inputHash(title, description) {
-  return createHash('sha256').update(`${title}\n${String(description ?? '').slice(0, DESCRIPTION_CHARS)}\n${PROMPT_VERSION}`).digest('hex');
+export function inputHash(title, description, options = {}) {
+  return createHash('sha256').update(`${title}\n${prepareDescription(description, options)}\n${PROMPT_VERSION}`).digest('hex');
+}
+
+/**
+ * The description text actually sent to the model: the first DESCRIPTION_CHARS characters (production default), or
+ * the trimmed text when trimming is on (RANK_TRIM_DESCRIPTIONS=1 or an explicit option).
+ * @param {string|null|undefined} description Stored job description.
+ * @param {{trim?: boolean}} [options] Trim override; defaults to the RANK_TRIM_DESCRIPTIONS flag.
+ * @returns {string} Text for the prompt (empty string when there is no description).
+ */
+export function prepareDescription(description, { trim = getConfig().rank.trimDescriptions } = {}) {
+  return trim ? trimDescription(description, TRIM_MAX_CHARS) : String(description ?? '').slice(0, DESCRIPTION_CHARS);
 }
 
 /** Build the per-job user message (the system prompt is static and identical across calls). */
-export function buildUserMessage(title, description, company, rawLocation = null) {
+export function buildUserMessage(title, description, company, rawLocation = null, options = {}) {
   return `Score this job:
       Company: ${company}
       Title: ${title}
       Raw location: ${rawLocation || 'Not provided'}
-      Description: ${description?.slice(0, DESCRIPTION_CHARS) || 'Not provided'}`;
+      Description: ${prepareDescription(description, options) || 'Not provided'}`;
 }
 
 /**
@@ -156,14 +168,16 @@ export function parseRankOutput(raw) {
  * @param {string} description Job description.
  * @param {string} company Company name.
  * @param {string|null} [rawLocation] Original ATS location context.
- * @param {object} [context] Ledger context ({db, runId, jobId, kind}).
- * @returns {Promise<{score: number, reason: string, location: string|null, model: string, promptVersion: number, inputHash: string}>} Ranking.
+ * @param {object} [context] Ledger context ({db, runId, jobId, kind, purpose, signal}); `trim` overrides the
+ *   RANK_TRIM_DESCRIPTIONS flag and `overrides` ({model, provider}) is used by the eval harness.
+ * @returns {Promise<{score: number, reason: string, location: string|null, archetype: string|null, seniorityFit: string|null, model: string, promptVersion: number, inputHash: string, usage: object, estCostUsd: number}>} Ranking.
  * @throws {import('../llm/index.js').LlmError|RankOutputError}
  */
-export async function rankJob(title, description, company, rawLocation = null, { db, runId, jobId, kind = 'rank', signal } = {}) {
-  const response = await callLlm(SYSTEM_PROMPT, buildUserMessage(title, description, company, rawLocation), {
-    db, runId, jobId, kind, client: 'ranker', maxTokens: getConfig().rank.maxTokens, temperature: 0, disableThinking: true, signal,
+export async function rankJob(title, description, company, rawLocation = null, { db, runId, jobId, kind = 'rank', signal, trim, overrides, purpose } = {}) {
+  const trimOption = trim === undefined ? {} : { trim };
+  const response = await callLlm(SYSTEM_PROMPT, buildUserMessage(title, description, company, rawLocation, trimOption), {
+    db, runId, jobId, kind, client: 'ranker', maxTokens: getConfig().rank.maxTokens, temperature: 0, disableThinking: true, signal, overrides, purpose,
   });
   if (response.truncated) throw new RankOutputError('Model output was truncated at max_tokens.');
-  return { ...parseRankOutput(response.text), model: response.model, promptVersion: PROMPT_VERSION, inputHash: inputHash(title, description) };
+  return { ...parseRankOutput(response.text), model: response.model, promptVersion: PROMPT_VERSION, inputHash: inputHash(title, description, trimOption), usage: response.usage, estCostUsd: response.estCostUsd };
 }
