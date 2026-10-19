@@ -367,8 +367,11 @@ test('JSON extraction: prose or fences around the object, braces inside strings,
   assert.match(SYSTEM_PROMPT, /Always reply with the JSON object only/);
 });
 
-test('prompt v7 content (v6 generic-title rule plus HARD RULES): employer-based company signal, customer-facing technical roles, new calibration examples', () => {
-  assert.equal(PROMPT_VERSION, 7);
+test('prompt v8 content (v6 generic-title rule, v7 HARD RULES, v8 hands-on customer-facing rule): employer-based company signal, customer-facing technical roles, new calibration examples', () => {
+  assert.equal(PROMPT_VERSION, 8);
+  const handsOn = 'Hands-on customer-facing AI roles (Applied AI, Solutions, Deployed, Forward Deployed) at AI labs or product companies: partnering with account executives, translating customer requirements, workshops and conference talks do not make a role pre-sales. If the duties include building pilots, prototypes, eval suites, agents or code reviews with customer engineers, score 7-8. A Python or ML emphasis lowers the score by at most 1 for these roles. Roles whose duties are mainly pre-sales demos, account management, executive value cases, training delivery or project management with no hands-on building stay at 3-4.';
+  const at = SYSTEM_PROMPT.indexOf(handsOn);
+  assert.ok(at > SYSTEM_PROMPT.indexOf('Customer-facing technical roles at product or AI companies (Applied AI') && at < SYSTEM_PROMPT.indexOf('HARD RULES'), 'v8 hands-on rule sits under the customer-facing guidance');
   assert.ok(SYSTEM_PROMPT.includes('Generic titles (Software Engineer, SDE, Senior Software Engineer) with no stack information in the text: score 5, not lower. Score 3 or below only with positive evidence of a mismatch, such as a Java, Go, C++ or Python-primary backend, data, infra or hardware work.'));
   const hard = SYSTEM_PROMPT.indexOf('HARD RULES');
   assert.ok(hard > 0 && hard < SYSTEM_PROMPT.indexOf('SCORING (1-10)'), 'HARD RULES come before the scoring bands');

@@ -5,7 +5,7 @@ import { getConfig } from '../config/env.js';
 import { parseNormalizedLocation } from '../jobs/fields.js';
 
 /** Bump when the prompt or output contract changes; stored as jobs.rank_prompt_version. */
-export const PROMPT_VERSION = 7;
+export const PROMPT_VERSION = 8;
 export const ARCHETYPES = ['frontend', 'fullstack', 'fde_applied_ai', 'product_engineer', 'backend', 'data_ml', 'infra', 'other'];
 export const SENIORITY_FITS = ['under', 'fit', 'stretch', 'over'];
 /** Safety cap only: the complete stored description is sent unless it exceeds this. */
@@ -22,6 +22,7 @@ PROFILE
 - Target level: SDE 2 / Senior Engineer (Staff is an acceptable stretch)
 - Roles he wants, best first: frontend/React and Next.js; full-stack with React/TypeScript/Node; product or founding engineer; frontend platform; Forward Deployed Engineer, Applied AI or agentic engineer where TypeScript/Node/JavaScript work is central
 - Customer-facing technical roles at product or AI companies (Applied AI, Solutions, Deployed, Forward Deployed, Technical Consultant) are targets when the duties include hands-on building such as prototypes, pilots, integrations, code reviews, evals or agents. Score them like FDE roles (7-9 when the stack fits). Score them 3-4 only when the role is mainly sales support, pre-sales demos, account management, training delivery or project management with no hands-on building.
+- Hands-on customer-facing AI roles (Applied AI, Solutions, Deployed, Forward Deployed) at AI labs or product companies: partnering with account executives, translating customer requirements, workshops and conference talks do not make a role pre-sales. If the duties include building pilots, prototypes, eval suites, agents or code reviews with customer engineers, score 7-8. A Python or ML emphasis lowers the score by at most 1 for these roles. Roles whose duties are mainly pre-sales demos, account management, executive value cases, training delivery or project management with no hands-on building stay at 3-4.
 
 HARD RULES (apply these first; they override everything below)
 - People-management roles (the job manages engineers or teams, titles such as Manager, Senior Manager, Head, Director, Engineering Manager) score 1, regardless of company, domain or stack.

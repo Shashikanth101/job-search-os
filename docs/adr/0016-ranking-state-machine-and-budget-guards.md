@@ -97,8 +97,13 @@ no retry limit, budget cap, lock, circuit breaker or usage record, and concurren
   out of ADJUSTMENTS). The first v6 eval (46/60) showed Staff-level and manager rows scored inconsistently. The eval now
   stores `seniority_fit` per result (so it is in `tmp/eval-*.json`) and prints a "Failed rows" block with it and the full
   reason. Thirteen golden ranges were revised by hand after reviewing the v6 failures (263, 681, 938, 936, 594, 785, 669,
-  114, 1588, 254, 3219, 1709, 853); they are no longer constrained to bracket the v5 `baseline_score`. `PROMPT_VERSION`
-  is 7; older rows are re-ranked only through `--rerank-version 7`, after a passing `npm run eval -- --run`.
+  114, 1588, 254, 3219, 1709, 853); they are no longer constrained to bracket the v5 `baseline_score`. Prompt v8 adds, under the
+  customer-facing technical roles guidance in the profile, a rule that hands-on customer-facing AI roles (Applied AI,
+  Solutions, Deployed, Forward Deployed) at AI labs or product companies are not pre-sales merely because of account
+  executive partnering, requirement translation, workshops or talks: with pilots, prototypes, eval suites, agents or
+  code reviews the score is 7-8, Python/ML emphasis costs at most 1, and mainly pre-sales/account-management/executive
+  value case/training/project-management roles stay at 3-4. Six more golden ranges were revised by hand (239, 938, 237,
+  936, 3176, 12156). `PROMPT_VERSION` is 8; older rows are re-ranked only through `--rerank-version 8`, after a passing `npm run eval -- --run`.
 - Unranked jobs have a NULL score everywhere (never 0), sort last and display as "Not ranked yet".
 
 ## Consequences
