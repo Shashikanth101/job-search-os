@@ -6,6 +6,7 @@ import { dailySpendUsd } from '../llm/usage.js';
 import { acquireLock, releaseLock } from '../locks.js';
 import { getRankConfig, RANK_LOCK_NAME, RANK_LOCK_TTL_MS, BREAKER_CONSECUTIVE_FAILURES, IN_RUN_RETRIES } from './config.js';
 import { getConfig } from '../config/env.js';
+import { deriveLocation } from '../jobs/fields.js';
 import { ARCHETYPES, MAX_DESCRIPTION_CHARS, PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, buildUserMessage, rankJob } from './index.js';
 
 const PENDING_OR_RETRYABLE = `COALESCE(prefilter_status, 'passed') != 'rejected' AND (
@@ -48,7 +49,7 @@ function selectJobs(db, options) {
   const { where, params, filtered } = candidateQuery(options);
   // A filtered re-rank is ordered best-score-first so a budget or job-cap stop loses the least important jobs.
   const order = filtered ? 'relevance_score DESC, id' : "(rank_status = 'pending') DESC, found_at DESC, id";
-  return db.prepare(`SELECT id, title, company, location, description, source, rank_status FROM jobs
+  return db.prepare(`SELECT id, title, company, location, location_raw, description, source, rank_status FROM jobs
     WHERE ${where} ORDER BY ${order} LIMIT @limit`).all({ ...params, limit: options.limit });
 }
 
@@ -56,7 +57,8 @@ function selectJobs(db, options) {
  * Rank one stored job with fresh independent requests. Never writes a fabricated score:
  * infrastructure failures leave the job untouched ('infra'); only unusable output after retries becomes 'failed'.
  * @param {import('better-sqlite3').Database} db Database connection.
- * @param {object} job Job row (id, title, description, company, location, source).
+ * @param {object} job Job row (id, title, description, company, location, location_raw, source). The model's location never
+ *   overwrites a stored value with null; a NULL location falls back to deriveLocation(location_raw).
  * @param {object} [options] Options.
  * @param {string} [options.runId] Ledger run id.
  * @param {'rank'|'manual'} [options.kind] Ledger kind.
@@ -74,11 +76,11 @@ export async function rankOne(db, job, { runId, kind = 'rank', rerank = false, s
     try {
       const result = await rankJob(job.title, job.description, job.company, job.location, { db, runId, jobId: job.id, kind, signal });
       const update = db.prepare(`UPDATE jobs SET relevance_score = @score, relevance_reason = @reason,
-        ${job.source === 'manual' ? '' : 'location = @location,'}
+        ${job.source === 'manual' ? '' : 'location = COALESCE(@location, location, @fallbackLocation),'}
         rank_status = 'ranked', rank_model = @model, rank_prompt_version = @promptVersion, rank_input_hash = @inputHash,
         ranked_at = @rankedAt, rank_archetype = @archetype, rank_seniority_fit = @seniorityFit, rank_last_error = NULL, rank_next_retry_at = NULL
         WHERE id = @id AND (@rerank = 1 OR rank_status IN ('pending', 'failed'))`);
-      update.run({ ...result, location: result.location, rankedAt: new Date().toISOString(), id: job.id, rerank: rerank ? 1 : 0 });
+      update.run({ ...result, location: result.location, fallbackLocation: deriveLocation(job.location_raw), rankedAt: new Date().toISOString(), id: job.id, rerank: rerank ? 1 : 0 });
       return { outcome: 'ranked' };
     } catch (error) {
       // An aborted call (shutdown) leaves the job untouched: no attempt counted, no error recorded, no score.

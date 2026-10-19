@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   title TEXT NOT NULL,
   company TEXT NOT NULL,
   location TEXT,
+  -- ATS location string exactly as scraped (migration 009); `location` is the normalized value.
+  location_raw TEXT,
   job_type TEXT,
   description TEXT,
   apply_url TEXT,
@@ -104,4 +106,13 @@ CREATE TABLE IF NOT EXISTS app_locks (
   expires_at TEXT NOT NULL,
   pid INTEGER,
   hostname TEXT
+);
+
+-- Completed fetch cycles (migration 010); the startup catch-up compares the latest against FETCH_CATCHUP_HOURS.
+CREATE TABLE IF NOT EXISTS cycle_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trigger TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  completed_at TEXT NOT NULL,
+  scrape_errors INTEGER NOT NULL DEFAULT 0
 );

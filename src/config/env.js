@@ -36,6 +36,7 @@ export const ENV_DEFAULTS = {
   RANK_MAX_ATTEMPTS: '3',
   RANK_RETRY_BASE_MINUTES: '60',
   RANK_MAX_TOKENS: '600',
+  FETCH_CATCHUP_HOURS: '12',
 };
 
 /**
@@ -101,6 +102,9 @@ export function getConfig(env = process.env) {
       apiKey: read(env, 'RESUME_LLM_API_KEY') || read(env, 'LLM_API_KEY'),
       model: read(env, 'RESUME_LLM_MODEL') || read(env, 'LLM_MODEL'),
       baseUrl: resumeProvider === 'ollama' ? read(env, 'RESUME_LLM_BASE_URL') : '',
+    },
+    fetch: {
+      catchupHours: number(env, 'FETCH_CATCHUP_HOURS'),
     },
     rank: {
       maxJobs: number(env, 'RANK_MAX_JOBS_PER_RUN'),

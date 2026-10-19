@@ -2,6 +2,7 @@ import { normalizeJobType } from '../jobs/fields.js';
 import { migrateJobPrefilter } from './004-job-prefilter.js';
 import { migrateJobRankColumns } from './005-ranking-state.js';
 import { migrateRankArchetype } from './006-rank-archetype.js';
+import { migrateLocationRaw } from './009-location-raw.js';
 
 /** Report exact duplicate posting URLs without changing any rows. */
 export function findDuplicateUrls(db) {
@@ -52,6 +53,7 @@ export function migrateJobConstraints(db) {
       migrateJobPrefilter(db);
       migrateJobRankColumns(db);
       migrateRankArchetype(db);
+      migrateLocationRaw(db);
       db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_apply_url_unique ON jobs(apply_url)');
       db.prepare("UPDATE sqlite_sequence SET seq=MAX(seq, ?) WHERE name='jobs'").run(sequence);
       if (db.pragma('foreign_key_check').length) throw new Error('Foreign-key validation failed; migration rolled back.');

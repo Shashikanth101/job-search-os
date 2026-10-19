@@ -35,11 +35,15 @@ The SQLite database defaults to `data/jobs.db` and can be changed with `DATABASE
 
 Generic ATS scrapers cover Greenhouse, Lever, SmartRecruiters, and Ashby. A shared pre-filter checks title and location eligibility before ranking. Scrapers run at 09:00 and 18:00 Asia/Kolkata; a weekly scheduler closes `applied` jobs whose latest application date is over 75 days old.
 
-Run a scrape manually with:
+Run one standalone pass (fetch, pre-filter, then rank pending jobs under the usual budget and job caps) with:
 
 ```bash
-npm run scrape
+npm run scrape                     # fetch + pre-filter + rank
+npm run scrape -- --no-rank        # fetch + pre-filter only (no LLM key needed)
+npm run scrape -- --source=workday # limit to Workday sources
 ```
+
+On startup the server runs one such cycle if the last completed cycle is older than `FETCH_CATCHUP_HOURS` (default 12; 0 disables).
 
 ## API
 

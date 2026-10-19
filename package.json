@@ -12,6 +12,7 @@
     "frontend": "cd frontend && npm install && npm run dev",
     "dev": "concurrently 'node src/server.js' 'cd frontend && npm run dev'",
     "scrape": "node src/scrape.js",
+    "backfill:location": "node src/scripts/backfill-location.js",
     "env:check": "node scripts/env-sync.js check",
     "env:sync": "node scripts/env-sync.js sync",
     "eval": "node scripts/eval.js",

@@ -35,23 +35,24 @@ export class BaseScraper {
 
   /**
    * Inserts new jobs (stamping their pre-filter verdict) and refreshes only non-user
-   * metadata of existing rows. New rows are 'pending' (no score). A re-scrape never changes prefilter_*, rank_*, relevance_*,
+   * metadata of existing rows (location_raw, the untouched ATS location string, is only filled when missing). New rows are 'pending' (no score). A re-scrape never changes prefilter_*, rank_*, relevance_*,
    * location (ranker-normalized), status, is_new or resume_path.
    * @param {Array<object>} jobs Normalized jobs.
    * @returns {number} Number of records written.
    */
   saveToDb(jobs) {
     const statement = this.db.prepare(`
-      INSERT INTO jobs (job_id, title, company, location, job_type, description, apply_url, source, posted_at,
+      INSERT INTO jobs (job_id, title, company, location, location_raw, job_type, description, apply_url, source, posted_at,
         prefilter_status, prefilter_reason, prefilter_version, prefilter_checked_at, rank_status)
-      VALUES (@job_id, @title, @company, @location, @job_type, @description, @apply_url, @source, @posted_at,
+      VALUES (@job_id, @title, @company, @location, @location_raw, @job_type, @description, @apply_url, @source, @posted_at,
         'passed', NULL, @prefilter_version, CURRENT_TIMESTAMP, 'pending')
       ON CONFLICT(company, job_id) DO UPDATE SET
         title = excluded.title,
         job_type = excluded.job_type,
         description = excluded.description,
         apply_url = excluded.apply_url,
-        posted_at = excluded.posted_at
+        posted_at = excluded.posted_at,
+        location_raw = COALESCE(jobs.location_raw, excluded.location_raw)
     `);
     const existingUrl = this.db.prepare('SELECT id, company, job_id, source FROM jobs WHERE apply_url = ?');
     const existingPosting = this.db.prepare('SELECT id FROM jobs WHERE company = ? AND job_id = ?');
@@ -69,6 +70,7 @@ export class BaseScraper {
           title: job.title,
           company: job.company ?? '',
           location: job.location ?? null,
+          location_raw: job.location_raw ?? job.location ?? null,
           job_type: normalizeJobType(job.job_type) || 'full-time',
           description: job.description ?? '',
           apply_url: job.apply_url ?? null,
