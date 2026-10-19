@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getConfig } from '../src/config/env.js';
-import { DESCRIPTION_CHARS } from '../src/ranker/index.js';
+import { MAX_DESCRIPTION_CHARS } from '../src/ranker/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'evals', 'golden.jsonl');
@@ -67,10 +67,8 @@ const lines = groups.flatMap(([category, rows]) => rows.map((row) => JSON.string
   title: row.title,
   company: row.company,
   location: row.location,
-  // Exactly what the ranker sends today (first DESCRIPTION_CHARS characters of the stored description).
-  description: String(row.description).slice(0, DESCRIPTION_CHARS),
-  // Full stored text, used only to compare the optional trimming helper against the production cut.
-  description_full: row.description,
+  // Exactly what the ranker sends: the complete stored description, capped at MAX_DESCRIPTION_CHARS.
+  description: String(row.description).slice(0, MAX_DESCRIPTION_CHARS),
   baseline_score: row.score,
   baseline_archetype: row.archetype,
   baseline_prompt_version: row.version,

@@ -314,7 +314,7 @@ test('archetype and seniority_fit are persisted when valid and stored NULL when 
   });
   await rankPending({ db, concurrency: 1, sleep: noSleep });
   assert.deepEqual(db.prepare('SELECT relevance_score, rank_archetype, rank_seniority_fit, rank_prompt_version FROM jobs WHERE id = ?').get(first),
-    { relevance_score: 8, rank_archetype: 'frontend', rank_seniority_fit: 'fit', rank_prompt_version: 5 });
+    { relevance_score: 8, rank_archetype: 'frontend', rank_seniority_fit: 'fit', rank_prompt_version: PROMPT_VERSION });
   assert.deepEqual(db.prepare('SELECT relevance_score, rank_archetype, rank_seniority_fit, rank_status FROM jobs WHERE id = ?').get(second),
     { relevance_score: 6, rank_archetype: null, rank_seniority_fit: null, rank_status: 'ranked' });
   db.close();
@@ -367,8 +367,10 @@ test('JSON extraction: prose or fences around the object, braces inside strings,
   assert.match(SYSTEM_PROMPT, /Always reply with the JSON object only/);
 });
 
-test('prompt v5 content: employer-based company signal, customer-facing technical roles, new calibration examples', () => {
-  assert.equal(PROMPT_VERSION, 5);
+test('prompt v6 content (adds the generic-title rule to v5): employer-based company signal, customer-facing technical roles, new calibration examples', () => {
+  assert.equal(PROMPT_VERSION, 6);
+  assert.ok(SYSTEM_PROMPT.includes('Generic titles (Software Engineer, SDE, Senior Software Engineer) with no stack information in the text: score 5, not lower. Score 3 or below only with positive evidence of a mismatch, such as a Java, Go, C++ or Python-primary backend, data, infra or hardware work.'));
+  assert.ok(SYSTEM_PROMPT.indexOf('Generic titles') > SYSTEM_PROMPT.indexOf('ADJUSTMENTS') && SYSTEM_PROMPT.indexOf('Generic titles') < SYSTEM_PROMPT.indexOf('CALIBRATION EXAMPLES'));
   for (const phrase of ['judge the employer, not the job title', 'never lower a score because the title contains Consultant',
     'TCS, Infosys, Accenture, Capgemini, Cognizant, Wipro', 'Score them like FDE roles (7-9 when the stack fits)',
     'mainly sales support, pre-sales demos, account management, training delivery or project management',
@@ -450,7 +452,7 @@ test('targeted re-rank runs best-score-first, honors the job cap, and never touc
   const after = new Map(db.prepare('SELECT * FROM jobs').all().map((row) => [row.job_id, row]));
   for (const key of ['s2other', 's1', 'v5', 'man', 'rej']) assert.deepEqual(after.get(key), before.get(key), `${key} untouched`);
   for (const key of ['s9', 's5', 's3', 's2fde', 's8old']) {
-    assert.equal(after.get(key).rank_prompt_version, 5, key);
+    assert.equal(after.get(key).rank_prompt_version, PROMPT_VERSION, key);
     assert.equal(after.get(key).relevance_score, 6, key);
   }
   assert.equal(ids.s9 > 0, true);

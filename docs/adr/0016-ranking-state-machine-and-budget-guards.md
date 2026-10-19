@@ -77,16 +77,22 @@ no retry limit, budget cap, lock, circuit breaker or usage record, and concurren
   line naming (never valuing) the shell variables that were overridden. The real `.env` is never loaded under
   tests; tests pass an explicit temp path to the loader.
 - **Golden eval harness:** `evals/golden.jsonl` holds 60 real jobs with hand-editable `expected_min`/`expected_max`
-  (pre-filled from the stored score +/-1; `description` is the exact 1,500-character text the ranker sends,
-  `description_full` the stored text). `npm run eval` is a dry run (count and cost estimate); `npm run eval -- --run
-  [--model X] [--provider Y] [--compare-trim] [--min-pass-rate 0.9]` scores each job through the production
+  (pre-filled from the stored score +/-1; `description` is exactly the text the ranker sends: the complete stored
+  description). `npm run eval:export` / `eval:import` give a compact CSV review loop (no LLM, no descriptions) that
+  edits only `expected_min`, `expected_max` and `note`. `npm run eval` is a dry run (count and cost estimate); `npm run eval -- --run
+  [--model X] [--provider Y] [--min-pass-rate 0.9]` scores each job through the production
   `rankJob` path (no retries), never writes to `jobs`, logs to `llm_usage` with `purpose='eval'` (migration 008;
   counts toward the daily budget), prints per-job PASS/FAIL, pass rate, cost and parse failures, saves
   `tmp/eval-*.json` and exits 1 below the gate. Changing the prompt requires a passing eval before any re-rank.
-- **Description trimming (experimental):** `RANK_TRIM_DESCRIPTIONS=1` strips EEO, benefits and company boilerplate
-  (sentence-level, since stored descriptions are flat text) and caps at 1,200 characters, instead of cutting the
-  first 1,500; it never over-trims. Default is `0` and production behavior is unchanged; the input hash follows
-  whichever text is sent. `--compare-trim` reports cost and pass rate with the flag off versus on.
+- **Complete descriptions (prompt v6):** the ranker sends the whole stored description, with only a 20,000-character
+  safety cap (`MAX_DESCRIPTION_CHARS`). The earlier 1,500-character cutoff hid the requirements section (and the stack
+  keywords in it) for many jobs, which produced low scores for generic titles with no visible stack; an experimental
+  boilerplate trimmer (`RANK_TRIM_DESCRIPTIONS`, `--compare-trim`) was tried and removed in favor of sending everything.
+  `inputHash` is computed from exactly the capped text that is sent. The in-flight budget reservation per call uses
+  the worst-case input size. v6 also adds an ADJUSTMENTS rule: generic titles (Software Engineer, SDE, Senior Software
+  Engineer) with no stack information score 5, and 3 or below needs positive evidence of a mismatch (Java, Go, C++ or
+  Python-primary backend, data, infra or hardware work). `PROMPT_VERSION` is 6; v5 rows are re-ranked only through
+  `--rerank-version 6`, after a passing `npm run eval -- --run`.
 - Unranked jobs have a NULL score everywhere (never 0), sort last and display as "Not ranked yet".
 
 ## Consequences

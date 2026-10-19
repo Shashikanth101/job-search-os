@@ -6,7 +6,7 @@ import { dailySpendUsd } from '../llm/usage.js';
 import { acquireLock, releaseLock } from '../locks.js';
 import { getRankConfig, RANK_LOCK_NAME, RANK_LOCK_TTL_MS, BREAKER_CONSECUTIVE_FAILURES, IN_RUN_RETRIES } from './config.js';
 import { getConfig } from '../config/env.js';
-import { ARCHETYPES, PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, buildUserMessage, rankJob } from './index.js';
+import { ARCHETYPES, MAX_DESCRIPTION_CHARS, PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, buildUserMessage, rankJob } from './index.js';
 
 const PENDING_OR_RETRYABLE = `COALESCE(prefilter_status, 'passed') != 'rejected' AND (
   rank_status = 'pending'
@@ -223,7 +223,7 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
   try {
     const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: caps.maxJobs });
     summary.selected = jobs.length;
-    const perCall = estimateCostUsd(model, 1500, getConfig().rank.maxTokens);
+    const perCall = estimateCostUsd(model, Math.ceil((SYSTEM_PROMPT.length + MAX_DESCRIPTION_CHARS) / 4), getConfig().rank.maxTokens);
     let next = 0;
     let active = 0;
     let consecutiveFailures = 0;

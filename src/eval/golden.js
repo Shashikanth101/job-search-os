@@ -38,21 +38,17 @@ export function loadGolden(file = GOLDEN_PATH) {
   return entries;
 }
 
-/** The description text a mode sends: the stored production copy (off) or the full text, trimmed by the ranker (on). */
-const inputFor = (entry, trim) => (trim ? entry.description_full ?? entry.description : entry.description);
-
 /**
  * Estimate tokens and cost for one pass over the golden set (no LLM call).
  * @param {Array<object>} entries Golden entries.
  * @param {object} [options] Options.
- * @param {boolean} [options.trim] Estimate with description trimming.
  * @param {{model?: string, provider?: string}} [options.overrides] Model/provider overrides.
  * @returns {{jobs: number, model: string, inputTokens: number, outputTokensTypical: number, outputTokensMax: number, costTypicalUsd: number, costMaxUsd: number}} Estimate.
  */
-export function estimateEval(entries, { trim = false, overrides = {} } = {}) {
+export function estimateEval(entries, { overrides = {} } = {}) {
   const model = resolveLlmSettings('ranker', overrides).model;
   const inputTokens = entries.reduce((sum, entry) => sum + Math.ceil((SYSTEM_PROMPT.length
-    + buildUserMessage(entry.title, inputFor(entry, trim), entry.company, entry.location, { trim }).length) / 4), 0);
+    + buildUserMessage(entry.title, entry.description, entry.company, entry.location).length) / 4), 0);
   const outputTokensTypical = entries.length * TYPICAL_OUTPUT_TOKENS;
   const outputTokensMax = entries.length * getConfig().rank.maxTokens;
   return {
@@ -68,14 +64,13 @@ export function estimateEval(entries, { trim = false, overrides = {} } = {}) {
  * @param {object} options Options.
  * @param {Array<object>} options.entries Golden entries.
  * @param {import('better-sqlite3').Database} [options.db] Ledger database (omit to skip the ledger and the budget guard).
- * @param {boolean} [options.trim] Send trimmed descriptions.
  * @param {{model?: string, provider?: string}} [options.overrides] Model/provider overrides.
  * @param {number} [options.concurrency] Parallel requests.
  * @param {number} [options.maxUsd] Stop when today's ledger spend reaches this (defaults to LLM_DAILY_BUDGET_USD).
  * @param {string} [options.runId] Ledger run id.
  * @returns {Promise<{summary: object, results: Array<object>}>} Per-job results and aggregate numbers.
  */
-export async function runEval({ entries, db, trim = false, overrides = {}, concurrency = 4, maxUsd = getConfig().llm.dailyBudgetUsd, runId = `eval-${Date.now()}` }) {
+export async function runEval({ entries, db, overrides = {}, concurrency = 4, maxUsd = getConfig().llm.dailyBudgetUsd, runId = `eval-${Date.now()}` }) {
   const results = new Array(entries.length);
   const state = { next: 0, aborted: false, abortReason: null };
   const worker = async () => {
@@ -91,8 +86,8 @@ export async function runEval({ entries, db, trim = false, overrides = {}, concu
       const entry = entries[index];
       const base = { id: entry.id, category: entry.category ?? null, title: entry.title, company: entry.company, expected_min: entry.expected_min, expected_max: entry.expected_max };
       try {
-        const ranked = await rankJob(entry.title, inputFor(entry, trim), entry.company, entry.location ?? null, {
-          db, runId, jobId: entry.id, kind: 'rank', purpose: 'eval', trim, overrides,
+        const ranked = await rankJob(entry.title, entry.description, entry.company, entry.location ?? null, {
+          db, runId, jobId: entry.id, kind: 'rank', purpose: 'eval', overrides,
         });
         results[index] = {
           ...base, status: 'scored', score: ranked.score, pass: ranked.score >= entry.expected_min && ranked.score <= entry.expected_max,
@@ -122,7 +117,6 @@ export async function runEval({ entries, db, trim = false, overrides = {}, concu
   return {
     results: entries.map((entry, index) => results[index] ?? { id: entry.id, title: entry.title, company: entry.company, status: 'not_run', pass: false }),
     summary: {
-      mode: trim ? 'trim_on' : 'trim_off',
       model: resolveLlmSettings('ranker', overrides).model,
       total: entries.length,
       attempted: done.length,

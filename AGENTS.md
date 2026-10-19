@@ -39,7 +39,7 @@ read that file before making frontend changes.
 - applications.status — deprecated as of ADR 0009, jobs.status is the sole funnel-state source. Do not read or write applications.status in new code.
 
 ## Testing
-- **Prompt changes need the golden eval.** Any change to the ranking prompt (`SYSTEM_PROMPT` in src/ranker/index.js), the output contract or the description handling must pass `npm run eval -- --run` (gate: pass rate >= 90%, no parse failures or errors) **before** any `--rerank-version` run. Review `evals/golden.jsonl` expectations when intent changes; `npm run eval` alone is a free dry run.
+- **Prompt changes need the golden eval.** Any change to the ranking prompt (`SYSTEM_PROMPT` in src/ranker/index.js), the output contract or the description handling must pass `npm run eval -- --run` (gate: pass rate >= 90%, no parse failures or errors) **before** any `--rerank-version` run. Review `evals/golden.jsonl` expectations when intent changes; `npm run eval` alone is a free dry run. To review expectations compactly (no LLM, no descriptions): `npm run eval:export` writes `evals/golden-review.csv`; edit `expected_min`/`expected_max`/`note` there, then `npm run eval:import` applies only those three fields back to `golden.jsonl` (validates `1 <= min <= max <= 10` and exact id match; all-or-nothing).
 - Run `node --test tests/*.test.js` for the full test suite
 - Run `npm run scrape` to validate scraper changes
 - Check saved row count in output before pushing

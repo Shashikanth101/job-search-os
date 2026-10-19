@@ -36,7 +36,6 @@ export const ENV_DEFAULTS = {
   RANK_MAX_ATTEMPTS: '3',
   RANK_RETRY_BASE_MINUTES: '60',
   RANK_MAX_TOKENS: '600',
-  RANK_TRIM_DESCRIPTIONS: '0',
 };
 
 /**
@@ -109,7 +108,6 @@ export function getConfig(env = process.env) {
       maxAttempts: number(env, 'RANK_MAX_ATTEMPTS'),
       retryBaseMinutes: number(env, 'RANK_RETRY_BASE_MINUTES'),
       maxTokens: Math.max(1, Math.floor(number(env, 'RANK_MAX_TOKENS'))),
-      trimDescriptions: read(env, 'RANK_TRIM_DESCRIPTIONS') === '1',
     },
   };
 }
