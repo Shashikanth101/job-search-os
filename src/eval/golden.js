@@ -91,7 +91,7 @@ export async function runEval({ entries, db, overrides = {}, concurrency = 4, ma
         });
         results[index] = {
           ...base, status: 'scored', score: ranked.score, pass: ranked.score >= entry.expected_min && ranked.score <= entry.expected_max,
-          archetype: ranked.archetype, reason: ranked.reason, costUsd: ranked.estCostUsd, inputTokens: ranked.usage.input_tokens, outputTokens: ranked.usage.output_tokens,
+          archetype: ranked.archetype, seniority_fit: ranked.seniorityFit, reason: ranked.reason, costUsd: ranked.estCostUsd, inputTokens: ranked.usage.input_tokens, outputTokens: ranked.usage.output_tokens,
         };
       } catch (error) {
         if (error instanceof RankOutputError) {

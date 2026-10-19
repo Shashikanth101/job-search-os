@@ -23,6 +23,14 @@ function printResults({ results, summary }) {
     const verdict = result.pass ? 'PASS' : result.status === 'scored' ? 'FAIL' : result.status.toUpperCase();
     console.log(`${verdict.padEnd(13)} #${result.id} ${result.status === 'scored' ? `score ${result.score}` : '-'} expected ${range}  ${result.company} | ${result.title}${result.error ? `  (${result.error.slice(0, 120)})` : ''}`);
   }
+  const failed = results.filter((result) => !result.pass);
+  if (failed.length) {
+    console.log('\nFailed rows:');
+    for (const result of failed) {
+      console.log(`  #${result.id} ${result.company} | ${result.title} | expected ${result.expected_min ?? '?'}-${result.expected_max ?? '?'} | got ${result.status === 'scored' ? result.score : result.status} | `
+        + `${result.archetype ?? '-'} | seniority_fit ${result.seniority_fit ?? '-'}\n    ${result.reason ?? result.error ?? ''}`);
+    }
+  }
   printSummary(summary);
 }
 

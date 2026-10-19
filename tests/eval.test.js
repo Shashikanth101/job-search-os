@@ -39,7 +39,7 @@ test('golden.jsonl: 60 unique, valid entries; descriptions are the complete text
     assert.ok(e.description.length > 0 && e.description.length <= MAX_DESCRIPTION_CHARS, `${e.id} description within the safety cap`);
     assert.equal('description_full' in e, false, `${e.id} has a single description field`);
     assert.equal(prepareDescription(e.description), e.description, `${e.id} is sent in full`);
-    assert.ok(e.expected_min >= 1 && e.expected_max <= 10 && e.expected_min <= e.baseline_score && e.baseline_score <= e.expected_max, `${e.id} range brackets the baseline score`);
+    assert.ok(e.expected_min >= 1 && e.expected_max <= 10 && e.expected_min <= e.expected_max, `${e.id} valid expected range (hand-edited; no longer tied to the v5 baseline)`);
   }
 });
 
@@ -69,6 +69,7 @@ test('eval scores through rankJob, reports pass/fail, parse failures, errors and
   const { summary, results } = await runEval({ entries, db, concurrency: 1, maxUsd: 100 });
 
   assert.deepEqual(results.map((r) => [r.id, r.status, r.pass]), [[1, 'scored', true], [2, 'scored', false], [3, 'parse_failure', false], [4, 'error', false], [5, 'scored', true]]);
+  assert.deepEqual(results.filter((r) => r.status === 'scored').map((r) => r.seniority_fit), ['fit', 'fit', 'fit'], 'seniority_fit is stored with each scored result (and so in the saved eval JSON)');
   assert.equal(summary.passed, 2);
   assert.equal(summary.failed, 3);
   assert.equal(summary.passRate, 2 / 5);

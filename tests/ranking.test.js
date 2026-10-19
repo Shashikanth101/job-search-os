@@ -367,9 +367,18 @@ test('JSON extraction: prose or fences around the object, braces inside strings,
   assert.match(SYSTEM_PROMPT, /Always reply with the JSON object only/);
 });
 
-test('prompt v6 content (adds the generic-title rule to v5): employer-based company signal, customer-facing technical roles, new calibration examples', () => {
-  assert.equal(PROMPT_VERSION, 6);
+test('prompt v7 content (v6 generic-title rule plus HARD RULES): employer-based company signal, customer-facing technical roles, new calibration examples', () => {
+  assert.equal(PROMPT_VERSION, 7);
   assert.ok(SYSTEM_PROMPT.includes('Generic titles (Software Engineer, SDE, Senior Software Engineer) with no stack information in the text: score 5, not lower. Score 3 or below only with positive evidence of a mismatch, such as a Java, Go, C++ or Python-primary backend, data, infra or hardware work.'));
+  const hard = SYSTEM_PROMPT.indexOf('HARD RULES');
+  assert.ok(hard > 0 && hard < SYSTEM_PROMPT.indexOf('SCORING (1-10)'), 'HARD RULES come before the scoring bands');
+  for (const phrase of ['People-management roles (the job manages engineers or teams, titles such as Manager, Senior Manager, Head, Director, Engineering Manager) score 1, regardless of company, domain or stack.',
+    'Required experience of 10 or more years, or titles Senior Staff, Sr. Staff, Principal or Distinguished: the score cannot exceed 5.',
+    "Never adjust the score for the job's location."]) {
+    const at = SYSTEM_PROMPT.indexOf(phrase);
+    assert.ok(at > hard && at < SYSTEM_PROMPT.indexOf('SCORING (1-10)'), phrase);
+  }
+  assert.ok(!SYSTEM_PROMPT.includes('score 1-2.\nUse the full range') && SYSTEM_PROMPT.includes('score 1 (see HARD RULES)'), 'no conflicting 1-2 people-management line');
   assert.ok(SYSTEM_PROMPT.indexOf('Generic titles') > SYSTEM_PROMPT.indexOf('ADJUSTMENTS') && SYSTEM_PROMPT.indexOf('Generic titles') < SYSTEM_PROMPT.indexOf('CALIBRATION EXAMPLES'));
   for (const phrase of ['judge the employer, not the job title', 'never lower a score because the title contains Consultant',
     'TCS, Infosys, Accenture, Capgemini, Cognizant, Wipro', 'Score them like FDE roles (7-9 when the stack fits)',

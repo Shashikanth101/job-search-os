@@ -91,8 +91,14 @@ no retry limit, budget cap, lock, circuit breaker or usage record, and concurren
   `inputHash` is computed from exactly the capped text that is sent. The in-flight budget reservation per call uses
   the worst-case input size. v6 also adds an ADJUSTMENTS rule: generic titles (Software Engineer, SDE, Senior Software
   Engineer) with no stack information score 5, and 3 or below needs positive evidence of a mismatch (Java, Go, C++ or
-  Python-primary backend, data, infra or hardware work). `PROMPT_VERSION` is 6; v5 rows are re-ranked only through
-  `--rerank-version 6`, after a passing `npm run eval -- --run`.
+  Python-primary backend, data, infra or hardware work). - **Prompt v7 hard rules:** a HARD RULES block before the scoring bands, applied first: people-management roles score 1
+  regardless of company, domain or stack (this replaces the old "1-2" line); required experience of 10+ years or titles
+  Senior Staff / Sr. Staff / Principal / Distinguished cap the score at 5; never adjust the score for location (moved
+  out of ADJUSTMENTS). The first v6 eval (46/60) showed Staff-level and manager rows scored inconsistently. The eval now
+  stores `seniority_fit` per result (so it is in `tmp/eval-*.json`) and prints a "Failed rows" block with it and the full
+  reason. Thirteen golden ranges were revised by hand after reviewing the v6 failures (263, 681, 938, 936, 594, 785, 669,
+  114, 1588, 254, 3219, 1709, 853); they are no longer constrained to bracket the v5 `baseline_score`. `PROMPT_VERSION`
+  is 7; older rows are re-ranked only through `--rerank-version 7`, after a passing `npm run eval -- --run`.
 - Unranked jobs have a NULL score everywhere (never 0), sort last and display as "Not ranked yet".
 
 ## Consequences

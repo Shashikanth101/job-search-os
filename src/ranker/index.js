@@ -5,7 +5,7 @@ import { getConfig } from '../config/env.js';
 import { parseNormalizedLocation } from '../jobs/fields.js';
 
 /** Bump when the prompt or output contract changes; stored as jobs.rank_prompt_version. */
-export const PROMPT_VERSION = 6;
+export const PROMPT_VERSION = 7;
 export const ARCHETYPES = ['frontend', 'fullstack', 'fde_applied_ai', 'product_engineer', 'backend', 'data_ml', 'infra', 'other'];
 export const SENIORITY_FITS = ['under', 'fit', 'stretch', 'over'];
 /** Safety cap only: the complete stored description is sent unless it exceeds this. */
@@ -23,6 +23,11 @@ PROFILE
 - Roles he wants, best first: frontend/React and Next.js; full-stack with React/TypeScript/Node; product or founding engineer; frontend platform; Forward Deployed Engineer, Applied AI or agentic engineer where TypeScript/Node/JavaScript work is central
 - Customer-facing technical roles at product or AI companies (Applied AI, Solutions, Deployed, Forward Deployed, Technical Consultant) are targets when the duties include hands-on building such as prototypes, pilots, integrations, code reviews, evals or agents. Score them like FDE roles (7-9 when the stack fits). Score them 3-4 only when the role is mainly sales support, pre-sales demos, account management, training delivery or project management with no hands-on building.
 
+HARD RULES (apply these first; they override everything below)
+- People-management roles (the job manages engineers or teams, titles such as Manager, Senior Manager, Head, Director, Engineering Manager) score 1, regardless of company, domain or stack.
+- Required experience of 10 or more years, or titles Senior Staff, Sr. Staff, Principal or Distinguished: the score cannot exceed 5.
+- Never adjust the score for the job's location.
+
 SCORING (1-10). Weigh role fit, stack fit, level fit and company signal together.
 9-10: Frontend, full-stack (React/TypeScript/Node) or product-engineer role, or an FDE/Applied AI/agentic role where JS/TS is central, at a strong product company or well-funded AI-native startup, right level. Customer-facing technical roles with hands-on building (prototypes, pilots, integrations, evals, agents) count as FDE-like when JS/TS is central. Use only when all four fit.
 7-8: Good role fit with one gap: stack partly matches, company signal is moderate, level is a small stretch, or Python is expected alongside TypeScript. Customer-facing technical roles at product or AI companies (Applied AI, Solutions, Deployed, Forward Deployed, Technical Consultant) with hands-on building score here or higher when the stack fits (7-9).
@@ -30,7 +35,7 @@ SCORING (1-10). Weigh role fit, stack fit, level fit and company signal together
 3-4: Roles at IT services, consulting, outsourcing or staffing firms; customer-facing roles that are mainly sales support, pre-sales demos, account management, training delivery or project management with no hands-on building; vague role; weak frontend/full-stack signal; Python-primary or backend-primary with only a little frontend.
 1-2: Pure backend in Java/Go/C++/Rust, data science or ML research, infra/SRE/DevOps, QA only, native mobile, non-engineering, or the wrong level (intern, entry-level, principal and above).
 Technical writing, documentation, content, recruiting, sales, marketing, finance, legal, compliance and program/product management are non-engineering: score 1-2.
-People-management roles (managing engineers or teams, titles such as Senior Manager or Engineering Manager) are not individual-contributor roles: score 1-2.
+People-management roles (managing engineers or teams, titles such as Senior Manager or Engineering Manager) are not individual-contributor roles: score 1 (see HARD RULES).
 Use the full range. Most jobs should land between 3 and 7.
 
 ADJUSTMENTS (apply after choosing the band; keep the result within 1-10)
@@ -38,7 +43,7 @@ ADJUSTMENTS (apply after choosing the band; keep the result within 1-10)
 - Company signal: judge the employer, not the job title. Only companies whose business is selling IT services, consulting, outsourcing or staffing (for example TCS, Infosys, Accenture, Capgemini, Cognizant, Wipro) score at most 4. A product or AI company hiring a Consultant, Solutions, Deployed, Customer or Applied AI engineer is NOT a services company; never lower a score because the title contains Consultant.
 - Domain: -1 if the core product is EdTech, HealthTech, gaming or real estate.
 - Generic titles (Software Engineer, SDE, Senior Software Engineer) with no stack information in the text: score 5, not lower. Score 3 or below only with positive evidence of a mismatch, such as a Java, Go, C++ or Python-primary backend, data, infra or hardware work.
-- Do not adjust the score for location. A separate filter already checks eligibility.
+- A separate filter already checks location eligibility.
 
 CALIBRATION EXAMPLES
 - Senior Frontend Engineer, React/Next.js, well-known product company, 4-7 years -> 9
