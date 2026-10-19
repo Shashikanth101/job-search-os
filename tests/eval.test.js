@@ -149,3 +149,23 @@ test('migration 008 adds llm_usage.purpose idempotently', () => {
   assert.ok(db.prepare('PRAGMA table_info(llm_usage)').all().some((column) => column.name === 'purpose'));
   db.close();
 });
+
+test('known_miss rows are scored and reported but excluded from the pass-rate gate and error counts', async (t) => {
+  const entries = [entry(1, 7, 9), entry(2, 7, 9, { known_miss: true }), entry(3, 7, 9, { known_miss: true })];
+  useClient(t, ({ user }) => {
+    const id = Number(user.match(/Title: Job (\d+)/)[1]);
+    if (id === 3) return { text: 'nope', usage: { input_tokens: 5, output_tokens: 5 } };
+    return reply(id === 1 ? 8 : 4);
+  });
+  const { summary, results } = await runEval({ entries, concurrency: 1 });
+  assert.deepEqual([summary.total, summary.passed, summary.failed, summary.passRate, summary.parseFailures], [1, 1, 0, 1, 0]);
+  assert.deepEqual(summary.knownMisses.map((m) => [m.id, m.score, m.pass]), [[2, 4, false], [3, null, false]]);
+  assert.deepEqual(results.map((r) => r.known_miss), [false, true, true]);
+  assert.equal(results[1].model_score, 4);
+  const golden = loadGolden(GOLDEN_PATH);
+  assert.deepEqual(golden.filter((e) => e.known_miss).map((e) => [e.id, e.expected_min, e.expected_max]), [[12156, 7, 9]]);
+  for (const [id, min, max] of [[938, 1, 5], [669, 2, 5], [239, 6, 9], [263, 5, 8]]) {
+    const e = golden.find((g) => g.id === id);
+    assert.deepEqual([e.expected_min, e.expected_max], [min, max], String(id));
+  }
+});

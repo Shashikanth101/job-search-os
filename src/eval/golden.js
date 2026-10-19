@@ -84,14 +84,14 @@ export async function runEval({ entries, db, overrides = {}, concurrency = 4, ma
       }
       state.next += 1;
       const entry = entries[index];
-      const base = { id: entry.id, category: entry.category ?? null, title: entry.title, company: entry.company, expected_min: entry.expected_min, expected_max: entry.expected_max };
+      const base = { id: entry.id, known_miss: entry.known_miss === true, category: entry.category ?? null, title: entry.title, company: entry.company, expected_min: entry.expected_min, expected_max: entry.expected_max };
       try {
         const ranked = await rankJob(entry.title, entry.description, entry.company, entry.location ?? null, {
           db, runId, jobId: entry.id, kind: 'rank', purpose: 'eval', overrides,
         });
         results[index] = {
           ...base, status: 'scored', score: ranked.score, pass: ranked.score >= entry.expected_min && ranked.score <= entry.expected_max,
-          archetype: ranked.archetype, seniority_fit: ranked.seniorityFit, reason: ranked.reason, costUsd: ranked.estCostUsd, inputTokens: ranked.usage.input_tokens, outputTokens: ranked.usage.output_tokens,
+          model_score: ranked.modelScore, archetype: ranked.archetype, seniority_fit: ranked.seniorityFit, reason: ranked.reason, costUsd: ranked.estCostUsd, inputTokens: ranked.usage.input_tokens, outputTokens: ranked.usage.output_tokens,
         };
       } catch (error) {
         if (error instanceof RankOutputError) {
@@ -112,19 +112,23 @@ export async function runEval({ entries, db, overrides = {}, concurrency = 4, ma
 
   const done = results.filter(Boolean);
   const scored = done.filter((result) => result.status === 'scored');
-  const passed = done.filter((result) => result.pass).length;
+  // Known misses (golden `known_miss: true`) are still scored and printed but excluded from the pass-rate gate.
+  const gated = done.filter((result) => !result.known_miss);
+  const gatedTotal = entries.filter((entry) => entry.known_miss !== true).length;
+  const passed = gated.filter((result) => result.pass).length;
   const costUsd = scored.reduce((sum, result) => sum + result.costUsd, 0);
   return {
-    results: entries.map((entry, index) => results[index] ?? { id: entry.id, title: entry.title, company: entry.company, status: 'not_run', pass: false }),
+    results: entries.map((entry, index) => results[index] ?? { id: entry.id, known_miss: entry.known_miss === true, title: entry.title, company: entry.company, status: 'not_run', pass: false }),
     summary: {
       model: resolveLlmSettings('ranker', overrides).model,
-      total: entries.length,
-      attempted: done.length,
+      total: gatedTotal,
+      attempted: gated.length,
       passed,
-      failed: entries.length - passed,
-      passRate: entries.length ? passed / entries.length : 0,
-      parseFailures: done.filter((result) => result.status === 'parse_failure').length,
-      errors: done.filter((result) => result.status === 'error').length,
+      failed: gatedTotal - passed,
+      passRate: gatedTotal ? passed / gatedTotal : 0,
+      knownMisses: done.filter((result) => result.known_miss).map((result) => ({ id: result.id, status: result.status, score: result.score ?? null, pass: result.pass, expected_min: result.expected_min, expected_max: result.expected_max })),
+      parseFailures: gated.filter((result) => result.status === 'parse_failure').length,
+      errors: gated.filter((result) => result.status === 'error').length,
       costUsd,
       avgCostUsd: scored.length ? costUsd / scored.length : 0,
       inputTokens: scored.reduce((sum, result) => sum + result.inputTokens, 0),

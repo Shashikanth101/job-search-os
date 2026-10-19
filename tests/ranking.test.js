@@ -12,7 +12,8 @@ import { callLlm, LlmError, setLlmClient } from '../src/llm/index.js';
 import { backfillRankStatus } from '../src/migrations/005-ranking-state.js';
 import { acquireLock } from '../src/locks.js';
 import { rankPending } from '../src/ranker/rank-pending.js';
-import { PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, parseRankOutput } from '../src/ranker/index.js';
+import { PROMPT_VERSION, RankOutputError, SYSTEM_PROMPT, applySeniorTitleCap, parseRankOutput, rankJob } from '../src/ranker/index.js';
+import { clampSeniorTitles } from '../src/scripts/clamp-senior-titles.js';
 import { BaseScraper } from '../src/scrapers/base-scraper.js';
 import { runScheduledCycle, startScheduler } from '../src/scheduler.js';
 
@@ -487,4 +488,59 @@ test('CLI parses --min-score and --include-archetype for the dry run', async (t)
   assert.equal(result.eligible, 5);
   assert.ok(lines.some((line) => /FILTER .*score >= 3 OR archetype in \[fde_applied_ai, infra\] -> 5 candidates; est cost \$[\d.]+ typical \/ \$[\d.]+ worst case/.test(line)));
   await assert.rejects(runRankCli(['--rerank-version', '5', '--min-score', 'abc']), /--min-score must be a number/);
+});
+
+test('applySeniorTitleCap clamps Senior Staff / Sr. Staff / Principal / Distinguished titles to 5 and keeps the model score in the reason', () => {
+  for (const title of ['Senior Staff Engineer', 'Sr. Staff Forward Deployed Engineer', 'Sr Staff ML Engineer', 'Principal Software Engineer', 'Distinguished Engineer', 'PRINCIPAL ENGINEER']) {
+    const capped = applySeniorTitleCap(title, 8, 'Strong fit.');
+    assert.deepEqual([capped.score, capped.modelScore, capped.clamped], [5, 8, true], title);
+    assert.ok(capped.reason.startsWith('Strong fit.') && capped.reason.includes('capped to 5 from model score 8'), title);
+  }
+  for (const title of ['Staff Frontend Engineer', 'Senior Frontend Engineer', 'Staffing Coordinator', 'Software Engineer', null]) {
+    assert.equal(applySeniorTitleCap(title, 9, 'r').clamped, false, String(title));
+    assert.equal(applySeniorTitleCap(title, 9, 'r').score, 9);
+  }
+  assert.deepEqual(applySeniorTitleCap('Principal Engineer', 5, 'r'), { score: 5, reason: 'r', modelScore: 5, clamped: false });
+  assert.equal(applySeniorTitleCap('Principal Engineer', 3, 'r').score, 3, 'never raises a low score');
+});
+
+test('rankJob applies the senior-title cap after parsing and logs it; other titles are untouched', async (t) => {
+  setLlmClient(async () => ({ text: JSON.stringify({ score: 8, reason: 'Great.', location: null, archetype: 'frontend', seniority_fit: 'stretch' }), usage: { input_tokens: 10, output_tokens: 5 } }));
+  t.after(() => setLlmClient(null));
+  const logs = [];
+  t.mock.method(console, 'log', (line) => logs.push(String(line)));
+  const capped = await rankJob('Principal Frontend Engineer', 'React', 'Acme');
+  assert.equal(capped.score, 5);
+  assert.equal(capped.modelScore, 8);
+  assert.ok(capped.reason.includes('from model score 8'));
+  assert.ok(logs.some((line) => /\[Ranker\] Capped "Principal Frontend Engineer" from 8 to 5/.test(line)));
+  const plain = await rankJob('Senior Frontend Engineer', 'React', 'Acme');
+  assert.deepEqual([plain.score, plain.modelScore, plain.reason], [8, 8, 'Great.']);
+});
+
+test('clampSeniorTitles backs up first, clamps only ranked rows above 5 with matching titles, and reports counts', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clamp-'));
+  const file = path.join(dir, 'jobs.db');
+  const db = createDatabase(file);
+  const insert = db.prepare("INSERT INTO jobs (job_id, title, company, source, rank_status, relevance_score, relevance_reason) VALUES (?, ?, 'Acme', 'test', ?, ?, 'orig')");
+  insert.run('a', 'Principal Engineer', 'ranked', 8);
+  insert.run('b', 'Sr. Staff Engineer', 'ranked', 4);
+  insert.run('c', 'Staff Engineer', 'ranked', 9);
+  insert.run('d', 'Distinguished Engineer', 'pending', null);
+  db.close();
+  const dry = clampSeniorTitles({ databasePath: file });
+  assert.deepEqual([dry.matched, dry.changed, dry.backup], [1, 0, null]);
+  const result = clampSeniorTitles({ databasePath: file, run: true });
+  assert.deepEqual([result.matched, result.changed], [1, 1]);
+  assert.ok(fs.existsSync(result.backup));
+  const after = new Database(file, { readonly: true });
+  const rows = Object.fromEntries(after.prepare('SELECT job_id, relevance_score s, relevance_reason r FROM jobs').all().map((row) => [row.job_id, row]));
+  assert.equal(rows.a.s, 5);
+  assert.ok(rows.a.r.startsWith('orig') && rows.a.r.includes('from model score 8'));
+  assert.deepEqual([rows.b.s, rows.c.s, rows.d.s], [4, 9, null]);
+  after.close();
+  const backup = new Database(result.backup, { readonly: true });
+  assert.equal(backup.prepare("SELECT relevance_score s FROM jobs WHERE job_id = 'a'").get().s, 8, 'backup holds the pre-clamp score');
+  backup.close();
+  assert.equal(clampSeniorTitles({ databasePath: file, run: true }).changed, 0, 'idempotent');
 });

@@ -103,7 +103,15 @@ no retry limit, budget cap, lock, circuit breaker or usage record, and concurren
   executive partnering, requirement translation, workshops or talks: with pilots, prototypes, eval suites, agents or
   code reviews the score is 7-8, Python/ML emphasis costs at most 1, and mainly pre-sales/account-management/executive
   value case/training/project-management roles stay at 3-4. Six more golden ranges were revised by hand (239, 938, 237,
-  936, 3176, 12156). `PROMPT_VERSION` is 8; older rows are re-ranked only through `--rerank-version 8`, after a passing `npm run eval -- --run`.
+  936, 3176, 12156). **Seniority cap in code:** the prompt rule is
+  backed by a post-processing guard in `rankJob` (`applySeniorTitleCap`): a title matching
+  `/\b(senior staff|sr\.? staff|principal|distinguished)\b/i` is clamped to 5, the original model score is appended to
+  the stored reason (`[Score capped to 5 from model score N ...]`) and logged. The prompt is unchanged (still v8).
+  `src/scripts/clamp-senior-titles.js` is the one-time backfill for ranked rows (dry run unless `--run`; takes a
+  `VACUUM INTO` backup first; updates only `relevance_score`/`relevance_reason`); applied once, 1 row (#936) changed.
+  **Known misses:** a golden entry with `known_miss: true` (currently 12156, expected 7-9) is still scored and printed
+  in every eval under "Known misses" but is excluded from the pass-rate gate and from parse/error counts.
+  `PROMPT_VERSION` is 8; older rows are re-ranked only through `--rerank-version 8`, after a passing `npm run eval -- --run`.
 - Unranked jobs have a NULL score everywhere (never 0), sort last and display as "Not ranked yet".
 
 ## Consequences

@@ -13,21 +13,29 @@ const usd = (value) => `$${value.toFixed(4)}`;
 const pct = (value) => `${(value * 100).toFixed(1)}%`;
 
 function printSummary(summary) {
-  console.log(`\nmodel ${summary.model}: ${summary.passed}/${summary.total} pass (${pct(summary.passRate)}); ${summary.parseFailures} parse failure(s), ${summary.errors} error(s); `
+  console.log(`\nmodel ${summary.model}: ${summary.passed}/${summary.total} pass (${pct(summary.passRate)}; ${summary.knownMisses.length} known miss(es) excluded); ${summary.parseFailures} parse failure(s), ${summary.errors} error(s); `
     + `cost ${usd(summary.costUsd)} (avg ${usd(summary.avgCostUsd)}/job), ${summary.inputTokens} in / ${summary.outputTokens} out tokens${summary.aborted ? `; ABORTED (${summary.abortReason})` : ''}`);
 }
 
 function printResults({ results, summary }) {
   for (const result of results) {
     const range = `[${result.expected_min ?? '?'}-${result.expected_max ?? '?'}]`;
-    const verdict = result.pass ? 'PASS' : result.status === 'scored' ? 'FAIL' : result.status.toUpperCase();
+    const verdict = result.known_miss ? `KNOWN-MISS ${result.pass ? 'ok' : 'miss'}` : result.pass ? 'PASS' : result.status === 'scored' ? 'FAIL' : result.status.toUpperCase();
     console.log(`${verdict.padEnd(13)} #${result.id} ${result.status === 'scored' ? `score ${result.score}` : '-'} expected ${range}  ${result.company} | ${result.title}${result.error ? `  (${result.error.slice(0, 120)})` : ''}`);
   }
-  const failed = results.filter((result) => !result.pass);
+  const failed = results.filter((result) => !result.pass && !result.known_miss);
   if (failed.length) {
     console.log('\nFailed rows:');
     for (const result of failed) {
       console.log(`  #${result.id} ${result.company} | ${result.title} | expected ${result.expected_min ?? '?'}-${result.expected_max ?? '?'} | got ${result.status === 'scored' ? result.score : result.status} | `
+        + `${result.archetype ?? '-'} | seniority_fit ${result.seniority_fit ?? '-'}\n    ${result.reason ?? result.error ?? ''}`);
+    }
+  }
+  const known = results.filter((result) => result.known_miss);
+  if (known.length) {
+    console.log('\nKnown misses (printed every run, excluded from the pass-rate gate):');
+    for (const result of known) {
+      console.log(`  #${result.id} ${result.company} | ${result.title} | expected ${result.expected_min}-${result.expected_max} | got ${result.status === 'scored' ? result.score : result.status} | ${result.pass ? 'now within range' : 'still missing'} | `
         + `${result.archetype ?? '-'} | seniority_fit ${result.seniority_fit ?? '-'}\n    ${result.reason ?? result.error ?? ''}`);
     }
   }

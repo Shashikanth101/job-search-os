@@ -166,6 +166,23 @@ export function parseRankOutput(raw) {
   };
 }
 
+/** Titles that mark a Senior Staff or higher role; the score cannot exceed SENIOR_TITLE_MAX_SCORE for these. */
+export const SENIOR_TITLE_PATTERN = /\b(senior staff|sr\.? staff|principal|distinguished)\b/i;
+export const SENIOR_TITLE_MAX_SCORE = 5;
+
+/**
+ * Post-processing guard for the HARD RULES seniority cap: clamp the score to SENIOR_TITLE_MAX_SCORE when the title matches
+ * SENIOR_TITLE_PATTERN. The original model score is kept in the returned reason text.
+ * @param {string} title Job title.
+ * @param {number} score Score from the model (or stored).
+ * @param {string} reason Reason from the model (or stored).
+ * @returns {{score: number, reason: string, modelScore: number, clamped: boolean}} Possibly clamped score and annotated reason.
+ */
+export function applySeniorTitleCap(title, score, reason) {
+  if (!SENIOR_TITLE_PATTERN.test(String(title ?? '')) || score <= SENIOR_TITLE_MAX_SCORE) return { score, reason, modelScore: score, clamped: false };
+  return { score: SENIOR_TITLE_MAX_SCORE, reason: `${reason} [Score capped to ${SENIOR_TITLE_MAX_SCORE} from model score ${score}: Senior Staff/Principal-level title.]`, modelScore: score, clamped: true };
+}
+
 /**
  * Score a job against Shashikanth's profile with one independent, fresh request.
  * Never fabricates a score: infrastructure failures throw LlmError, unusable output throws RankOutputError.
@@ -175,7 +192,7 @@ export function parseRankOutput(raw) {
  * @param {string|null} [rawLocation] Original ATS location context.
  * @param {object} [context] Ledger context ({db, runId, jobId, kind, purpose, signal, overrides}); `overrides`
  *   ({model, provider}) is used by the eval harness.
- * @returns {Promise<{score: number, reason: string, location: string|null, archetype: string|null, seniorityFit: string|null, model: string, promptVersion: number, inputHash: string, usage: object, estCostUsd: number}>} Ranking.
+ * @returns {Promise<{score: number, modelScore: number, reason: string, location: string|null, archetype: string|null, seniorityFit: string|null, model: string, promptVersion: number, inputHash: string, usage: object, estCostUsd: number}>} Ranking.
  * @throws {import('../llm/index.js').LlmError|RankOutputError}
  */
 export async function rankJob(title, description, company, rawLocation = null, { db, runId, jobId, kind = 'rank', signal, overrides, purpose } = {}) {
@@ -183,5 +200,8 @@ export async function rankJob(title, description, company, rawLocation = null, {
     db, runId, jobId, kind, client: 'ranker', maxTokens: getConfig().rank.maxTokens, temperature: 0, disableThinking: true, signal, overrides, purpose,
   });
   if (response.truncated) throw new RankOutputError('Model output was truncated at max_tokens.');
-  return { ...parseRankOutput(response.text), model: response.model, promptVersion: PROMPT_VERSION, inputHash: inputHash(title, description), usage: response.usage, estCostUsd: response.estCostUsd };
+  const ranked = parseRankOutput(response.text);
+  const capped = applySeniorTitleCap(title, ranked.score, ranked.reason);
+  if (capped.clamped) console.log(`[Ranker] Capped "${title}" from ${capped.modelScore} to ${capped.score} (senior title).`);
+  return { ...ranked, score: capped.score, reason: capped.reason, modelScore: capped.modelScore, model: response.model, promptVersion: PROMPT_VERSION, inputHash: inputHash(title, description), usage: response.usage, estCostUsd: response.estCostUsd };
 }
