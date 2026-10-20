@@ -7,7 +7,7 @@ import Database from 'better-sqlite3';
 import { createDatabase } from '../src/db.js';
 import { BaseScraper } from '../src/scrapers/base-scraper.js';
 import { createApp } from '../src/app.js';
-import { classifyTitle, classifyTitleWithReason, evaluateJobRules, extractMinYears, preFilterJobs, PREFILTER_VERSION } from '../src/scrapers/pre-filter.js';
+import { classifyTitle, classifyTitleWithReason, evaluateJobRules, extractExperience, extractMinYears, preFilterJobs, PREFILTER_VERSION } from '../src/scrapers/pre-filter.js';
 import { reclassifyPrefilter } from '../src/scripts/reclassify-prefilter.js';
 
 function tempDir() {
@@ -49,6 +49,30 @@ test('extractMinYears', () => {
   ];
   for (const [text, expected] of cases) assert.equal(extractMinYears(text), expected, String(text));
   assert.equal(extractMinYears(`${'x'.repeat(80)} 9 years ${'y'.repeat(80)} experience`), null, 'experience beyond the 60 char window');
+});
+
+test('extractExperience: ranges, plus forms, minimum/at least, bare years, optional text and none', () => {
+  const cases = [
+    ['3-5 years of experience', { min: 3, max: 5, plus: false, label: '3-5 yrs' }],
+    ['3 to 5 years of relevant experience', { min: 3, max: 5, plus: false, label: '3-5 yrs' }],
+    ['3 – 5 yrs experience', { min: 3, max: 5, plus: false, label: '3-5 yrs' }],
+    ['5+ years of experience in React', { min: 5, max: null, plus: true, label: '5+ yrs' }],
+    ['Minimum 4 years of professional experience', { min: 4, max: null, plus: true, label: '4+ yrs' }],
+    ['At least 7 years experience building systems', { min: 7, max: null, plus: true, label: '7+ yrs' }],
+    ['Min of 2 years of experience', { min: 2, max: null, plus: true, label: '2+ yrs' }],
+    ['6 years of experience required', { min: 6, max: null, plus: false, label: '6 yrs' }],
+    ['<ul><li>2+ years experience</li><li>8+ years of experience leading teams</li></ul>', { min: 8, max: null, plus: true, label: '8+ yrs' }],
+    ['3+ years of experience. Nice to have: 12 years of experience.', { min: 3, max: null, plus: true, label: '3+ yrs' }],
+    ['10+ years of experience is preferred', null],
+    ['Our company has been around for 20 years.', null],
+    ['5+ years of Java, plus experience with Kafka', null],
+    ['No experience requirements are listed.', null],
+    ['', null], [null, null], [undefined, null],
+  ];
+  for (const [text, expected] of cases) assert.deepEqual(extractExperience(text), expected, String(text));
+  for (const text of ['3-5 years of experience', '5+ years of experience in React', 'Minimum 7 years of professional experience', '<li>4+ years experience</li>', 'Bonus: 15 years of experience']) {
+    assert.equal(extractExperience(text)?.min ?? null, extractMinYears(text), `agrees with extractMinYears: ${text}`);
+  }
 });
 
 test('evaluateJobRules and preFilterJobs carry reasons and never reject manual jobs', () => {

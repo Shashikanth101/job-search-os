@@ -1,5 +1,7 @@
 import express from 'express';
 import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import linkedinOutreach from './config/linkedin-outreach.js';
 import manualLinks from './config/manual-links.js';
 import uncoveredCompanies from './config/uncovered-companies.js';
@@ -7,9 +9,11 @@ import messageTemplates from './config/message-templates.js';
 import { rankOne } from './ranker/rank-pending.js';
 import { JOB_TYPES } from './jobs/fields.js';
 import { serializeJob } from './db.js';
+import { createReviewRouter } from './review.js';
 import { compileResume } from './resume/compiler.js';
 import { generateResume } from './resume/generator.js';
 
+const FRONTEND_DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../frontend/dist');
 const JOB_STATUSES = ['not_applied', 'applied', 'in_process', 'closed'];
 
 function parseId(value) {
@@ -28,11 +32,13 @@ function getApplicationInput(body = {}) {
 /**
  * Creates the Express application and mounts the API routes.
  * @param {import('better-sqlite3').Database} db Database connection.
+ * @param {{frontendDist?: string}} [options] Built frontend directory (default frontend/dist).
  * @returns {import('express').Express} Configured Express app.
  */
-export function createApp(db) {
+export function createApp(db, { frontendDist = FRONTEND_DIST } = {}) {
   const app = express();
   app.use(express.json());
+  app.use('/api/review', createReviewRouter(db));
 
   /**
    * Returns manually maintained career-page links.
@@ -345,6 +351,19 @@ export function createApp(db) {
       average_score: Number(stats.average_score),
       followUpsDue: followUps.length,
       followUps,
+    });
+  });
+
+  // Unknown API paths are a JSON 404 (never the SPA page).
+  app.use('/api', (_req, res) => res.status(404).json({ error: 'API route not found.' }));
+
+  // Built frontend: static assets, then index.html for every other non-API GET so client-side routes survive a hard refresh.
+  app.use(express.static(frontendDist, { index: false }));
+  app.get(/^\/(?!api(?:\/|$)).*/, (req, res) => {
+    // A missing file (has an extension) is a real 404, not the SPA page.
+    if (path.extname(req.path ?? '')) return res.status(404).type('text/plain').send('Not found');
+    res.sendFile(path.join(frontendDist, 'index.html'), (error) => {
+      if (error) res.status(404).type('text/plain').send('Frontend not built. Run: cd frontend && npm run build');
     });
   });
 

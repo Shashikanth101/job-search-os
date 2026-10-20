@@ -54,19 +54,45 @@ export function classifyTitle(title = '', options = {}) {
  * @returns {number|null} Largest minimum years, or null when none is stated or no description exists.
  */
 export function extractMinYears(description) {
-  if (!description || typeof description !== 'string') return null;
-  const text = description.replace(/<[^>]*>/g, '\n').replace(/&nbsp;|&#160;/gi, ' ');
   let largest = null;
-  for (const segment of text.split(/\n+|[•●▪·]|(?<=[.!?;])\s+/)) {
-    if (!segment || OPTIONAL_YEARS_SENTENCE.test(segment)) continue;
-    for (const match of segment.matchAll(YEARS_MENTION)) {
-      const nearby = segment.slice(Math.max(0, match.index - YEARS_EXPERIENCE_WINDOW), match.index + match[0].length + YEARS_EXPERIENCE_WINDOW);
-      if (!/experience/i.test(nearby)) continue;
-      const years = Number(match[1]);
-      if (largest === null || years > largest) largest = years;
-    }
+  for (const mention of experienceMentions(description)) {
+    if (largest === null || mention.min > largest) largest = mention.min;
   }
   return largest;
+}
+
+/** Years mentions with a ranged/plus form captured: "3-5 years", "5+ years", "4 yrs". */
+const YEARS_DETAIL = /(?<![\d.$])(\d{1,2})\s*(\+|(?:-|–|—|to)\s*(\d{1,2})\s*(\+)?)?\s*(?:years?|yrs?)\b/gi;
+const MINIMUM_QUALIFIER = /(?:minimum|min\.?|at least)\s*(?:of\s*)?$/i;
+
+/** Yield each qualifying "N years ... experience" mention (preferred/bonus sentences and mentions far from "experience" are skipped). */
+function* experienceMentions(description) {
+  if (!description || typeof description !== 'string') return;
+  const text = description.replace(/<[^>]*>/g, '\n').replace(/&nbsp;|&#160;/gi, ' ');
+  for (const segment of text.split(/\n+|[•●▪·]|(?<=[.!?;])\s+/)) {
+    if (!segment || OPTIONAL_YEARS_SENTENCE.test(segment)) continue;
+    for (const match of segment.matchAll(YEARS_DETAIL)) {
+      const nearby = segment.slice(Math.max(0, match.index - YEARS_EXPERIENCE_WINDOW), match.index + match[0].length + YEARS_EXPERIENCE_WINDOW);
+      if (!/experience/i.test(nearby)) continue;
+      const min = Number(match[1]);
+      const max = match[3] === undefined ? null : Number(match[3]);
+      const plus = match[2] === '+' || match[4] === '+' || MINIMUM_QUALIFIER.test(segment.slice(Math.max(0, match.index - 20), match.index));
+      yield { min, max, plus };
+    }
+  }
+}
+
+/**
+ * Required experience for display, derived deterministically from the description (no LLM): the mention with the largest minimum.
+ * @param {string|null|undefined} description Job description text or HTML.
+ * @returns {{min: number, max: number|null, plus: boolean, label: string}|null} Label such as "5+ yrs", "3-5 yrs" or "4 yrs"; null when none is stated.
+ */
+export function extractExperience(description) {
+  let best = null;
+  for (const mention of experienceMentions(description)) if (best === null || mention.min > best.min) best = mention;
+  if (!best) return null;
+  const label = best.max !== null ? `${best.min}-${best.max}${best.plus ? '+' : ''} yrs` : `${best.min}${best.plus ? '+' : ''} yrs`;
+  return { ...best, label };
 }
 
 /**

@@ -150,7 +150,9 @@ test('startup catch-up runs one cycle only when the last completed cycle is olde
   const calls = [];
   const cycle = async (_db, options) => { calls.push(options.trigger); };
   const now = Date.parse('2026-10-19T12:00:00Z');
-  assert.equal(getConfig({}).fetch.catchupHours, 12, 'default');
+  assert.equal(getConfig({}).fetch.catchupHours, 0, 'catch-up is disabled by default');
+  assert.equal(getConfig({}).scheduler.enabled, false, 'scheduler is disabled by default');
+  assert.equal(getConfig({ SCHEDULER_ENABLED: '1' }).scheduler.enabled, true);
   assert.equal(getConfig({ FETCH_CATCHUP_HOURS: '6' }).fetch.catchupHours, 6);
 
   assert.deepEqual(await catchUpIfStale(db, { hours: 12, nowMs: now, cycle }), { ran: true, reason: 'no cycle recorded' });
@@ -162,4 +164,48 @@ test('startup catch-up runs one cycle only when the last completed cycle is olde
   recordCycle(db, { trigger: 'cli', startedAt: '2026-10-19T11:00:00Z' });
   assert.equal((await catchUpIfStale(db, { hours: 1, nowMs: Date.now(), cycle })).ran, false, 'a cycle just recorded is fresh');
   db.close();
+});
+
+test('saveToDb sets location from deriveLocation(location_raw) only when location is NULL and never overwrites a non-null one', () => {
+  const db = memoryDb();
+  const stub = new StubScraper(db, []);
+  const posting = { job_id: 'p1', title: 'Frontend Engineer', company: 'Acme', description: 'v1', apply_url: 'https://x/p1' };
+  // New row without a location: nothing to derive from.
+  stub.saveToDb([{ ...posting, location: null }]);
+  assert.deepEqual({ ...db.prepare('SELECT location, location_raw FROM jobs').get() }, { location: null, location_raw: null });
+  // Re-scrape now returns an ATS string: raw is filled and the NULL location derived.
+  stub.saveToDb([{ ...posting, location: 'Bangalore, Karnataka' }]);
+  assert.deepEqual({ ...db.prepare('SELECT location, location_raw FROM jobs').get() }, { location: 'Bengaluru', location_raw: 'Bangalore, Karnataka' });
+  // A non-null location (normalized by the ranker or by hand) is never overwritten.
+  db.prepare("UPDATE jobs SET location = 'Pune'").run();
+  stub.saveToDb([{ ...posting, location: 'Hyderabad, India' }]);
+  assert.equal(db.prepare('SELECT location FROM jobs').get().location, 'Pune');
+  // Undecidable raw strings leave NULL alone.
+  db.prepare('UPDATE jobs SET location = NULL, location_raw = NULL').run();
+  stub.saveToDb([{ ...posting, location: 'Remote' }]);
+  assert.deepEqual({ ...db.prepare('SELECT location, location_raw FROM jobs').get() }, { location: null, location_raw: 'Remote' });
+  // A brand-new row with a raw string keeps it as its location until the ranker normalizes it (existing behavior).
+  stub.saveToDb([{ ...posting, job_id: 'p2', apply_url: 'https://x/p2', location: 'Bangalore' }]);
+  assert.equal(db.prepare("SELECT location FROM jobs WHERE job_id = 'p2'").get().location, 'Bangalore');
+  db.close();
+});
+
+test('backfill --no-network never fetches and derives NULL locations from the stored location_raw only', async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'backfill-nn-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'jobs.db');
+  const db = new Database(file);
+  db.exec(fs.readFileSync(new URL('../src/schema.sql', import.meta.url), 'utf8'));
+  db.prepare("INSERT INTO jobs (job_id, title, company, location, location_raw, source) VALUES ('a', 'A', 'Acme', NULL, 'Pune, India', 's'), ('b', 'B', 'Acme', NULL, 'Remote', 's'), ('c', 'C', 'Acme', 'Noida', 'Noida', 's'), ('d', 'D', 'Acme', NULL, NULL, 's')").run();
+  db.close();
+  t.mock.method(globalThis, 'fetch', async () => assert.fail('no network'));
+  const log = () => {};
+  const dry = await backfillLocations({ databasePath: file, network: false, cachePath: path.join(dir, 'none.json'), log });
+  assert.deepEqual([dry.locationUpdates.map((u) => [u.id, u.location]), dry.backup], [[[1, 'Pune']], null]);
+  const applied = await backfillLocations({ databasePath: file, network: false, run: true, cachePath: path.join(dir, 'none.json'), log });
+  assert.ok(applied.backup);
+  const check = new Database(file, { readonly: true });
+  assert.deepEqual(check.prepare('SELECT job_id, location FROM jobs ORDER BY id').all().map((r) => [r.job_id, r.location]), [['a', 'Pune'], ['b', null], ['c', 'Noida'], ['d', null]]);
+  check.close();
+  assert.equal(fs.existsSync(path.join(dir, 'none.json')), false, 'no cache is written');
 });

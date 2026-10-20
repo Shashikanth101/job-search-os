@@ -25,7 +25,7 @@ const backoffMs = (attempt) => jitter(Math.min(8000, 1000 * 2 ** attempt));
  * Build the candidate WHERE clause and bind parameters. With a re-rank, the optional targeted filter keeps rows whose
  * stored score is >= minScore OR whose archetype is in the list (either condition alone when only one is given).
  */
-function candidateQuery({ maxAttempts, rerankVersion, sourcePrefix, minScore, archetypes }) {
+function candidateQuery({ maxAttempts, rerankVersion, sourcePrefix, minScore, archetypes, manualOnly }) {
   const params = { maxAttempts, now: new Date().toISOString(), prefix: `${sourcePrefix ?? ''}%` };
   let where = rerankVersion ? RERANK : PENDING_OR_RETRYABLE;
   const filtered = Boolean(rerankVersion) && (minScore != null || archetypes?.length > 0);
@@ -42,7 +42,8 @@ function candidateQuery({ maxAttempts, rerankVersion, sourcePrefix, minScore, ar
     }
     where += ` AND (${conditions.join(' OR ')})`;
   }
-  return { where: `${where} AND source LIKE @prefix`, params, filtered };
+  // Manual jobs are ranked only on request (`npm run rank:manual`): every other selection excludes them.
+  return { where: `${where} AND source LIKE @prefix AND ${manualOnly ? "source = 'manual'" : "source != 'manual'"}`, params, filtered };
 }
 
 function selectJobs(db, options) {
@@ -145,13 +146,14 @@ function estimate(jobs, model) {
  * @param {number} [options.minScore] With rerankVersion: keep rows whose score is >= this (OR-ed with archetypes).
  * @param {string[]} [options.archetypes] With rerankVersion: keep rows whose rank_archetype is in this list.
  * @param {string} [options.sourcePrefix] Restrict to sources starting with this prefix.
+ * @param {boolean} [options.manualOnly] Rank only never-ranked manual jobs (with false, manual jobs are never selected). Not combinable with rerankVersion.
  * @param {(ms: number) => Promise<void>} [options.sleep] Backoff sleeper.
  * @param {number} [options.drainMs] After SIGINT/SIGTERM/SIGHUP, how long in-flight calls may finish before they are aborted.
  * @param {{on: Function, off: Function}} [options.processRef] Signal source (injectable for tests).
  * @param {(code: number) => void} [options.exit] Called with 130/143/129 after a signal-driven shutdown (injectable for tests).
  * @returns {Promise<object>} Run summary.
  */
-export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = randomUUID(), dryRun = false, rerankVersion, minScore, archetypes, sourcePrefix, sleep, drainMs = DRAIN_MS, processRef = process, exit = (code) => process.exit(code) } = {}) {
+export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = randomUUID(), dryRun = false, rerankVersion, minScore, archetypes, sourcePrefix, manualOnly = false, sleep, drainMs = DRAIN_MS, processRef = process, exit = (code) => process.exit(code) } = {}) {
   const config = getRankConfig();
   const caps = {
     maxJobs: maxJobs ?? config.maxJobs,
@@ -159,6 +161,7 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
     concurrency: Math.max(1, concurrency ?? config.concurrency),
     maxAttempts: config.maxAttempts,
   };
+  if (manualOnly && rerankVersion) throw new Error('--manual-only cannot be combined with --rerank-version (manual jobs are never re-ranked in bulk).');
   const hasFilter = minScore != null || archetypes?.length > 0;
   if (hasFilter && !rerankVersion) throw new Error('--min-score and --include-archetype only apply together with --rerank-version.');
   if (minScore != null && !Number.isFinite(minScore)) throw new Error('--min-score must be a number.');
@@ -176,16 +179,16 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
       SUM(rank_status = 'failed' AND rank_attempts < @maxAttempts AND rank_next_retry_at > @now) AS failedWaiting,
       SUM(rank_status = 'failed' AND rank_attempts >= @maxAttempts) AS failedExhausted,
       SUM(rank_status IS NULL) AS notBackfilled
-      FROM jobs WHERE source LIKE @prefix`).get({ maxAttempts: caps.maxAttempts, now, prefix: `${sourcePrefix ?? ''}%` });
-    const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: caps.maxJobs });
-    const { where, params } = candidateQuery({ ...caps, rerankVersion, minScore, archetypes, sourcePrefix });
+      FROM jobs WHERE source LIKE @prefix AND ${manualOnly ? "source = 'manual'" : "source != 'manual'"}`).get({ maxAttempts: caps.maxAttempts, now, prefix: `${sourcePrefix ?? ''}%` });
+    const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, manualOnly, limit: caps.maxJobs });
+    const { where, params } = candidateQuery({ ...caps, rerankVersion, minScore, archetypes, sourcePrefix, manualOnly });
     const eligible = db.prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where}`).get(params).n;
     const spentToday = dailySpendUsd(db);
     const forRun = estimate(jobs, model);
     const perJob = jobs.length ? forRun.costMaxUsd / jobs.length : 0;
     return { ...summary, counts, eligible, selected: jobs.length, spentTodayUsd: spentToday, budgetRemainingUsd: Math.max(0, caps.dailyBudgetUsd - spentToday),
       budgetAffordableJobs: perJob ? Math.floor(Math.max(0, caps.dailyBudgetUsd - spentToday) / perJob) : null,
-      filter: hasFilter ? { minScore: minScore ?? null, archetypes: archetypes ?? [] } : null, estimateThisRun: forRun, estimateAllEligible: estimate(selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: 1_000_000 }), model),
+      filter: hasFilter ? { minScore: minScore ?? null, archetypes: archetypes ?? [] } : null, estimateThisRun: forRun, estimateAllEligible: estimate(selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, manualOnly, limit: 1_000_000 }), model),
       disabled: config.disabled };
   }
 
@@ -223,7 +226,7 @@ export async function rankPending({ db, maxJobs, maxUsd, concurrency, runId = ra
   for (const [name, handler] of handlers) processRef.on(name, handler);
 
   try {
-    const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, limit: caps.maxJobs });
+    const jobs = selectJobs(db, { ...caps, rerankVersion, minScore, archetypes, sourcePrefix, manualOnly, limit: caps.maxJobs });
     summary.selected = jobs.length;
     const perCall = estimateCostUsd(model, Math.ceil((SYSTEM_PROMPT.length + MAX_DESCRIPTION_CHARS) / 4), getConfig().rank.maxTokens);
     let next = 0;

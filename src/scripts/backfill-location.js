@@ -91,11 +91,12 @@ export function planBackfill(rows, raw) {
  * @param {boolean} [options.run] Apply the plan.
  * @param {boolean} [options.refresh] Ignore the fetch cache.
  * @param {string} [options.sourcePrefix] Only fetch sources starting with this prefix.
+ * @param {boolean} [options.network] false (CLI --no-network) skips every fetch and only derives location from the stored location_raw.
  * @param {string} [options.cachePath] Fetch cache file (a dry run's fetch is reused by --run within 6 hours).
  * @param {(line: string) => void} [options.log] Logger.
  * @returns {Promise<object>} Counts, source errors, backup path and whether the cache was used.
  */
-export async function backfillLocations({ databasePath = getConfig().databasePath, run = false, refresh = false, sourcePrefix = '', cachePath = CACHE_PATH, log = console.log } = {}) {
+export async function backfillLocations({ databasePath = getConfig().databasePath, run = false, refresh = false, sourcePrefix = '', cachePath = CACHE_PATH, network = true, log = console.log } = {}) {
   const file = path.resolve(databasePath);
   // --run opens through createDatabase so migrations 009/010 are applied; a dry run opens read-only and tolerates the column not existing yet.
   const db = run ? createDatabase(file) : new Database(file, { readonly: true, fileMustExist: true });
@@ -103,8 +104,11 @@ export async function backfillLocations({ databasePath = getConfig().databasePat
     let raw;
     let errors = [];
     let usedCache = false;
-    const cached = !refresh && !sourcePrefix && fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : null;
-    if (cached && Date.now() - Date.parse(cached.fetchedAt) < CACHE_MAX_AGE_MS) {
+    const cached = network && !refresh && !sourcePrefix && fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf8')) : null;
+    if (!network) {
+      raw = new Map();
+      log('[Backfill] --no-network: no fetch; deriving location from the stored location_raw only.');
+    } else if (cached && Date.now() - Date.parse(cached.fetchedAt) < CACHE_MAX_AGE_MS) {
       raw = new Map(cached.entries);
       errors = cached.errors;
       usedCache = true;
@@ -142,7 +146,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const args = process.argv.slice(2);
   const run = args.includes('--run');
   const sourcePrefix = args.find((arg) => arg.startsWith('--source='))?.slice('--source='.length) ?? '';
-  backfillLocations({ run, refresh: args.includes('--refresh'), sourcePrefix }).then((result) => {
+  backfillLocations({ run, refresh: args.includes('--refresh'), sourcePrefix, network: !args.includes('--no-network') }).then((result) => {
     console.log(`\n[Backfill] ${run ? 'APPLIED' : 'DRY RUN (no database writes; pass --run to apply)'}`);
     console.log(JSON.stringify(result.counts, null, 2));
     const top = [...result.underivable].sort((a, b) => b[1] - a[1]).slice(0, 15);

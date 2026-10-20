@@ -50,7 +50,10 @@ test('scheduler registers the twice-daily scraper and weekly close task in India
     },
   };
 
-  const tasks = startScheduler(db, fakeScheduler);
+  assert.equal(startScheduler(db, fakeScheduler, { enabled: false }), null, 'nothing is scheduled while disabled');
+  assert.equal(registrations.length, 0);
+  assert.equal(startScheduler(db, fakeScheduler), null, 'default SCHEDULER_ENABLED=0');
+  const tasks = startScheduler(db, fakeScheduler, { enabled: true });
   assert.deepEqual(registrations.map(({ expression, options }) => ({ expression, options })), [
     { expression: '0 9,18 * * *', options: { timezone: 'Asia/Kolkata' } },
     { expression: '0 9 * * 1', options: { timezone: 'Asia/Kolkata' } },

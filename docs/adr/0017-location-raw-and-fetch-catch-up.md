@@ -1,4 +1,4 @@
-# 0017: Raw ATS location is kept, the model's null never erases a location, and the server catches up on startup
+# 0017: Raw ATS location is kept, the model's null never erases a location, automation is paused, and review is a read-mostly dashboard
 
 ## Status
 Accepted
@@ -34,3 +34,24 @@ missed the cycle, and `npm run scrape` only scraped.
 - Locations are no longer lost to a model null; the raw string is always available for diagnosis and re-derivation.
 - The first server start after this change has no recorded cycle and therefore runs one catch-up cycle.
 - Ranked rows whose raw string was never saved keep a NULL location until the backfill (or a later cron run) supplies it.
+
+## Amendment: automation paused, review dashboard, manual jobs
+The startup catch-up ran on the first server start (1,284 new postings scraped, ranking spent budget) and was not wanted.
+- **Paused by default:** `SCHEDULER_ENABLED` (default 0) gates `startScheduler` and the catch-up; `FETCH_CATCHUP_HOURS` now
+  defaults to 0. The code paths stay for production deploys (`SCHEDULER_ENABLED=1`). Starting the server only reads the DB.
+  `npm run scrape` remains the one manual refresh (`--no-rank` for scrape only). Both variables are in `.env.example` and `.env`.
+- **`saveToDb` location rule:** `location = COALESCE(NULLIF(existing, ''), deriveLocation(location_raw))` on re-scrape and
+  `COALESCE(@location, derived)` on insert: a NULL location is derived, a non-null one is never overwritten.
+  `npm run backfill:location -- --no-network [--run]` applies the same rule to stored rows without any fetch.
+- **Review dashboard (`/review`, `/review/manual`; API `src/review.js`):** server-side pagination, default view ranked,
+  non-rejected, non-manual, score >= 7, ordered by score then newest. Review status is derived: `jobs.status` stays the sole
+  funnel source (applying = `in_process`, applied = `applied`; marking applied also creates an `applications` row like the
+  manual flow), and `job_triage` (migration 011) holds only `saved` / `skipped`, the two choices the funnel has no value
+  for (its CHECK constraint is not widened); `new` is no row. An applied or closed job cannot be moved back from the review
+  view (409). "Last refresh" reads the newest `cycle_runs` row; location groups are India / Remote / Other / Unknown (NULL).
+  The API never scrapes, pre-filters or ranks.
+- **Manual jobs:** `POST /api/review/manual` stores URL, company, title, location and pasted description with
+  `rank_status='pending'`, no fetch and no LLM. Every ranking selection now excludes `source='manual'` (cron cycle,
+  `npm run rank`, `npm run scrape`); `npm run rank:manual` (`rankPending({manualOnly: true})`, dry run by default) ranks
+  never-ranked manual jobs under the same budget caps, lock and circuit breaker. The older `POST /api/jobs/manual`
+  (main dashboard form) still ranks on save, as an explicit user action.

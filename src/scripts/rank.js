@@ -25,7 +25,8 @@ function printDryRun(result) {
 }
 
 /**
- * CLI entry shared by rank.js, rerank.js and retry-workday-ranking.js. Dry run unless --run is passed.
+ * CLI entry shared by rank.js, rank:manual, rerank.js and retry-workday-ranking.js. Dry run unless --run is passed.
+ * `--manual-only` ranks only never-ranked manual jobs (and nothing else); without it manual jobs are never selected.
  * @param {string[]} args Command-line arguments.
  * @param {{sourcePrefix?: string}} [defaults] Fixed options for wrapper scripts.
  * @returns {Promise<object>} Run or dry-run summary.
@@ -51,6 +52,7 @@ export async function runRankCli(args, { sourcePrefix } = {}) {
       minScore: minScoreArg === undefined ? undefined : Number(minScoreArg),
       archetypes: archetypeArg === undefined ? undefined : archetypeArg.split(',').map((value) => value.trim()).filter(Boolean),
       sourcePrefix,
+      manualOnly: args.includes('--manual-only'),
     });
     if (result.dryRun) printDryRun(result);
     else console.log(`[Rank] ${JSON.stringify(result)}`);

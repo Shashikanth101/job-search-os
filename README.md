@@ -33,7 +33,9 @@ The SQLite database defaults to `data/jobs.db` and can be changed with `DATABASE
 
 ## Scrapers
 
-Generic ATS scrapers cover Greenhouse, Lever, SmartRecruiters, and Ashby. A shared pre-filter checks title and location eligibility before ranking. Scrapers run at 09:00 and 18:00 Asia/Kolkata; a weekly scheduler closes `applied` jobs whose latest application date is over 75 days old.
+Generic ATS scrapers cover Greenhouse, Lever, SmartRecruiters, and Ashby. A shared pre-filter checks title and location eligibility before ranking.
+
+**Automation is off by default.** The server only reads the database: starting it never scrapes, pre-filters or ranks. Refresh manually with `npm run scrape`. The in-process cron (scrapers at 09:00 and 18:00 Asia/Kolkata, plus a weekly job that closes `applied` jobs whose latest application date is over 75 days old) and the optional startup catch-up (`FETCH_CATCHUP_HOURS`) exist for production deploys: set `SCHEDULER_ENABLED=1` to turn them on.
 
 Run one standalone pass (fetch, pre-filter, then rank pending jobs under the usual budget and job caps) with:
 
@@ -43,7 +45,16 @@ npm run scrape -- --no-rank        # fetch + pre-filter only (no LLM key needed)
 npm run scrape -- --source=workday # limit to Workday sources
 ```
 
-On startup the server runs one such cycle if the last completed cycle is older than `FETCH_CATCHUP_HOURS` (default 12; 0 disables).
+With `SCHEDULER_ENABLED=1` the server also runs one such cycle on startup if the last completed cycle is older than `FETCH_CATCHUP_HOURS` (default 0 = never).
+
+## Review dashboard
+
+Start the API and the frontend. The app has a left sidebar: Inbox (new), Saved, Applying, Applied, Skipped, All jobs (one list with min score >= 7 by default, server-side pagination, filters, a detail pane; Up/Down arrows move, `a` apply, `s` save, `x` skip, `/` search), Manual (jobs you saved by URL; the "Add job" button opens the form), Outreach and Ops (refresh status, commands, follow-ups). Review statuses are stored in the database; the review API never scrapes or ranks. Manual jobs are never ranked automatically; rank them on request with:
+
+```bash
+npm run rank:manual            # dry run: count and worst-case cost
+npm run rank:manual -- --run   # rank never-ranked manual jobs under the usual budget caps
+```
 
 ## API
 

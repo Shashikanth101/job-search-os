@@ -116,3 +116,10 @@ CREATE TABLE IF NOT EXISTS cycle_runs (
   completed_at TEXT NOT NULL,
   scrape_errors INTEGER NOT NULL DEFAULT 0
 );
+
+-- Review-dashboard triage for choices jobs.status has no value for (migration 011): 'new' is no row.
+CREATE TABLE IF NOT EXISTS job_triage (
+  job_id INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  state TEXT NOT NULL CHECK (state IN ('saved', 'skipped')),
+  updated_at TEXT NOT NULL
+);

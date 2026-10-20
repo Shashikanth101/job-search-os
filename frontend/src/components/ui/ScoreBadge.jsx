@@ -1,40 +1,9 @@
-const SCORE_STYLES = {
-  high: 'bg-emerald-100 text-emerald-800 ring-emerald-600/20',
-  medium: 'bg-amber-100 text-amber-800 ring-amber-600/20',
-  low: 'bg-rose-100 text-rose-800 ring-rose-600/20',
-};
-
-function getScoreStyle(score) {
-  if (score >= 8) return SCORE_STYLES.high;
-  if (score >= 5) return SCORE_STYLES.medium;
-  return SCORE_STYLES.low;
-}
-
 /**
- * Relevance score pill shown on a job card.
- * @param {{ score: number|string|null|undefined, compact?: boolean }} props
+ * Score pill (neutral palette plus the accent: strong = accent, medium = accent tint, low = neutral).
+ * @param {{ score: number|string|null|undefined }} props - A null score (not ranked yet) renders a dash.
  */
-export function ScoreBadge({ score, compact = false }) {
-  if (score == null || score === '') {
-    return (
-      <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold leading-tight text-slate-500 ring-1 ring-inset ring-slate-300">
-        Not ranked yet
-      </span>
-    );
-  }
-
-  if (compact) {
-    return (
-      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset ${getScoreStyle(Number(score))}`}>
-        {score ?? '—'}
-      </span>
-    );
-  }
-
-  return (
-    <div className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl ring-1 ring-inset ${getScoreStyle(Number(score))}`}>
-      <span className="text-2xl font-bold leading-none">{score ?? '—'}</span>
-      <span className="mt-1 text-[10px] font-bold uppercase tracking-wider">score</span>
-    </div>
-  );
+export function ScoreBadge({ score }) {
+  const value = score == null || score === '' ? null : Number(score);
+  const tone = value == null ? 'bg-slate-100 text-slate-400' : value >= 8 ? 'bg-accent text-white' : value >= 6 ? 'bg-accent-soft text-accent-strong' : 'bg-slate-100 text-slate-600';
+  return <span className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-ui px-1.5 text-xs font-bold ${tone}`} title={value == null ? 'Not ranked yet' : `Score ${value}`}>{value ?? '–'}</span>;
 }

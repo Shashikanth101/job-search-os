@@ -68,6 +68,7 @@ export async function runScheduledCycle(db, { scrape = runAllScrapers, rank = ra
 
 /**
  * Startup catch-up: run one cycle when the last completed cycle is older than `hours` (or none was ever recorded).
+ * The server only calls this when SCHEDULER_ENABLED=1; FETCH_CATCHUP_HOURS defaults to 0 (disabled).
  * @param {import('better-sqlite3').Database} db Database connection.
  * @param {object} [options] Options.
  * @param {number} [options.hours] Staleness threshold in hours (default FETCH_CATCHUP_HOURS); 0 or less disables the catch-up.
@@ -108,12 +109,15 @@ export function closeStaleAppliedJobs(db) {
 }
 
 /**
- * Registers the scraper and weekly stale-job schedules in India Standard Time.
+ * Registers the scraper and weekly stale-job schedules in India Standard Time, but only when SCHEDULER_ENABLED=1
+ * (production deploys). Otherwise nothing is scheduled and the server never scrapes, pre-filters or ranks.
  * @param {import('better-sqlite3').Database} db Database connection.
  * @param {typeof cron} scheduler Cron API, injectable for schedule tests.
- * @returns {{ scraperTask: import('node-cron').ScheduledTask, staleJobCloseTask: import('node-cron').ScheduledTask }} Scheduled tasks.
+ * @param {{enabled?: boolean}} [options] Override for SCHEDULER_ENABLED (tests).
+ * @returns {{ scraperTask: import('node-cron').ScheduledTask, staleJobCloseTask: import('node-cron').ScheduledTask }|null} Scheduled tasks, or null when disabled.
  */
-export function startScheduler(db, scheduler = cron) {
+export function startScheduler(db, scheduler = cron, { enabled = getConfig().scheduler.enabled } = {}) {
+  if (!enabled) return null;
   const scraperTask = scheduler.schedule(SCRAPER_SCHEDULE, () => runScheduledCycle(db), SCHEDULE_OPTIONS);
   const staleJobCloseTask = scheduler.schedule(STALE_JOB_CLOSE_SCHEDULE, () => {
     try {

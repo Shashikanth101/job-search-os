@@ -3,17 +3,17 @@
 
 ## Frontend structure (frontend/src/)
 
-- `App.jsx` is composition-only: local UI state (active tab, filters, form-open
+- `main.jsx` (the `Root` component: routing, the shared min-score and counts state) and the page components (`JobsView`, `OpsPage`, `OutreachPage`) are composition-only: local UI state (active tab, filters, form-open
   flags), hook calls, thin glue functions that adapt form events into hook
   calls, and a `return` that wires components together. It must never contain
   raw `fetch()` calls or a section's full JSX markup.
 
 - `hooks/` — one hook per data resource or per cohesive action set.
-  - Read hooks (`useJobs`, `useStats`, `useManualLinks`, `useOutreach`) own
+  - Read hooks (`useReviewJobs`, `useReviewJob`, `useReviewCounts`, `useStats`, `useManualLinks`, `useOutreach`) own
     fetching + loading/error state for one resource and expose a `refetchX`
     function. They do not know about other hooks.
-  - Action hooks (`useApplicationActions`) own POST/PATCH/mutation logic and
-    take callbacks (e.g. `setJobs`, `refetchStats`) as dependencies instead of
+  - Action hooks (`useReviewActions`, `useApplicationDetails`, `useFollowUps`, `useAddManualJob`) own POST/PATCH/mutation logic and
+    take callbacks (e.g. `onUpdated`, `refetchStats`) as dependencies instead of
     owning that state themselves — keeps them reusable and testable in
     isolation.
   - A hook with a raw `fetch()` inside a component instead of a hook is a

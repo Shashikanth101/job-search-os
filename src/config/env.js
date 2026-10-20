@@ -36,7 +36,8 @@ export const ENV_DEFAULTS = {
   RANK_MAX_ATTEMPTS: '3',
   RANK_RETRY_BASE_MINUTES: '60',
   RANK_MAX_TOKENS: '600',
-  FETCH_CATCHUP_HOURS: '12',
+  FETCH_CATCHUP_HOURS: '0',
+  SCHEDULER_ENABLED: '0',
 };
 
 /**
@@ -105,6 +106,9 @@ export function getConfig(env = process.env) {
     },
     fetch: {
       catchupHours: number(env, 'FETCH_CATCHUP_HOURS'),
+    },
+    scheduler: {
+      enabled: read(env, 'SCHEDULER_ENABLED') === '1',
     },
     rank: {
       maxJobs: number(env, 'RANK_MAX_JOBS_PER_RUN'),

@@ -12,6 +12,7 @@ import { migrateLockOwner } from './migrations/007-lock-owner.js';
 import { migrateUsagePurpose } from './migrations/008-usage-purpose.js';
 import { migrateLocationRaw } from './migrations/009-location-raw.js';
 import { migrateCycleRuns } from './migrations/010-cycle-runs.js';
+import { migrateJobTriage } from './migrations/011-job-triage.js';
 
 const schemaPath = fileURLToPath(new URL('./schema.sql', import.meta.url));
 
@@ -58,6 +59,7 @@ export function createDatabase(databasePath = getConfig().databasePath) {
   migrateUsagePurpose(database);
   migrateLocationRaw(database);
   migrateCycleRuns(database);
+  migrateJobTriage(database);
   return database;
 }
 

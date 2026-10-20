@@ -6,7 +6,7 @@ export function StatsSummary({ stats }) {
   if (!stats) return null;
 
   const items = [
-    ['Not applied', stats.saved_applications],
+    ['Not applied (all open jobs, incl. unranked)', stats.saved_applications],
     ['Active applications', stats.applied_applications],
     ['Pending follow-ups', stats.pending_follow_ups],
   ];

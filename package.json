@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node src/server.js",
     "frontend": "cd frontend && npm install && npm run dev",
-    "dev": "concurrently 'node src/server.js' 'cd frontend && npm run dev'",
+    "dev": "concurrently 'node --watch src/server.js' 'cd frontend && npm run dev'",
     "scrape": "node src/scrape.js",
     "backfill:location": "node src/scripts/backfill-location.js",
     "env:check": "node scripts/env-sync.js check",
@@ -19,6 +19,7 @@
     "eval:export": "node scripts/eval-review.js export",
     "eval:import": "node scripts/eval-review.js import",
     "rank": "node src/scripts/rank.js",
+    "rank:manual": "node src/scripts/rank.js --manual-only",
     "rerank": "node src/scripts/rerank.js",
     "generate-resume": "node src/scripts/generate-resume.js"
   },
